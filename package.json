@@ -1,0 +1,25 @@
+{
+  "name": "di.js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --compilers js:babel/register",
+    "dev": "mocha --compilers js:babel/register -w",
+    "es5": "babel index.js -s inline -m umd --module-id di -o build/di.es5.js",
+    "build": "npm run es5 && uglifyjs build/di.es5.js -o build/di.es5.min.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel": "^5.8.23",
+    "babel-plugin-lodash": "^0.2.0",
+    "chai": "^3.2.0",
+    "chai-as-promised": "^5.1.0",
+    "mocha": "^2.2.5"
+  },
+  "dependencies": {
+    "lodash": "^3.10.1",
+    "uglifyjs": "^2.4.10"
+  }
+}
