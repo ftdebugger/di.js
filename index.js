@@ -155,8 +155,8 @@ let webpackResolver = (requires) => {
  * ```
  *  resolvers: [
  *      staticResolver({
- *          config: {...},
- *          globalBus: new Backbone.Wreqr.EventEmitter()
+ *          config: _ => {...},
+ *          globalBus: _ => new Backbone.Wreqr.EventEmitter()
  *      })
  *  ]
  * ```
@@ -171,15 +171,62 @@ let staticResolver = (hash) => {
 };
 
 /**
+ * Usage:
+ *
+ * ```
+ *  resolvers: [
+ *      arrayResolver([
+ *          staticResolver(...),
+ *          webpackResolver(...),
+ *          ....
+ *      ])
+ *  ]
+ * ```
+ *
+ * @param {function(name: string)[]} resolvers
+ * @returns {Function}
+ */
+let arrayResolver = (resolvers) => {
+    let bundleCache = {};
+
+    return (name) => {
+        let queue = resolvers.slice();
+
+        if (bundleCache[name]) {
+            return bundleCache[name];
+        }
+
+        var nextLoader = () => {
+            if (!queue.length) {
+                return;
+            }
+
+            let loader = queue.shift();
+
+            return then(loader(name), result => {
+                if (result) {
+                    return bundleCache[name] = result;
+                } else {
+                    return nextLoader();
+                }
+            });
+        };
+
+        return bundleCache[name] = nextLoader();
+    }
+};
+
+/**
  * @param {string} definition
  * @returns {{name: string, factory: string|undefined}}
  */
 let parseStringDefinition = (definition) => {
-    let matches = definition.match(/^([^.]+)(\.(.+))?$/);
+    let matches = definition ?
+        definition.match(/^([^.]+)(\.(.+))?$/) :
+        null;
 
     if (!matches) {
-        console.error(module);
-        throw new Error('Unknown module format');
+        throw new Error('Unknown module format: ' + JSON.stringify(definition));
     }
 
     return {
@@ -193,7 +240,7 @@ let parseStringDefinition = (definition) => {
  * @param {{}} config
  * @returns {*}
  */
-let normalizeDependencyDefinition = (dependencyId, config) => {
+let normalizeDefinition = (dependencyId, config) => {
     let definition = {
         id: dependencyId
     };
@@ -202,6 +249,8 @@ let normalizeDependencyDefinition = (dependencyId, config) => {
         _.extend(definition, parseStringDefinition(config));
     } else if (_.isArray(config)) {
         if (config.length === 1) {
+            definition.id = _.uniqueId('di');
+
             _.extend(definition, config[0]);
         } else {
             _.extend(definition, parseStringDefinition(config[0]), {dependencies: config[1]});
@@ -213,7 +262,8 @@ let normalizeDependencyDefinition = (dependencyId, config) => {
     }
 
     return _.defaults(definition, {
-        factory: 'factory'
+        factory: 'factory',
+        dependencies: {}
     });
 };
 
@@ -221,14 +271,35 @@ let normalizeDependencyDefinition = (dependencyId, config) => {
  * @param {{}} dependencies
  * @returns {{}}
  */
-let normalizeDependencyDefinitions = (dependencies) => {
+let normalizeDefinitions = (dependencies) => {
     let definitions = {};
 
     _.forEach(dependencies, (config, dependencyId) => {
-        definitions[dependencyId] = normalizeDependencyDefinition(dependencyId, config);
+        definitions[dependencyId] = normalizeDefinition(dependencyId, config);
     });
 
     return definitions;
+};
+
+/**
+ * @param {DiDefinition} definition
+ * @param {{}} dependencies
+ *
+ * @returns {Promise<object>|object}
+ */
+let factory = (definition, dependencies) => {
+    let Module = definition.Module,
+        factory = definition.factory;
+
+    if (Module.__esModule === true) {
+        Module = _.values(Module)[0];
+    }
+
+    if (Module[factory]) {
+        return Module[factory](dependencies);
+    } else {
+        return new Module(dependencies);
+    }
 };
 
 /**
@@ -238,30 +309,8 @@ let normalizeDependencyDefinitions = (dependencies) => {
  * @returns {function}
  */
 let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
-    let bundleCache = {};
-
-    let definitions = normalizeDependencyDefinitions(dependencies);
-
-    /**
-     * @param {DiDefinition} definition
-     * @param {{}} dependencies
-     *
-     * @returns {Promise<object>|object}
-     */
-    let factory = (definition, dependencies) => {
-        let Module = definition.Module,
-            factory = definition.factory;
-
-        if (Module.__esModule === true) {
-            Module = _.values(Module)[0];
-        }
-
-        if (Module[factory]) {
-            return Module[factory](dependencies);
-        } else {
-            return new Module(dependencies);
-        }
-    };
+    let definitions = normalizeDefinitions(dependencies),
+        resolve = arrayResolver(resolvers);
 
     /**
      * @param {DiDefinition} definition
@@ -273,34 +322,11 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
             return definition.Module;
         }
 
-        let queue = resolvers.slice(),
-            name = definition.bundleName;
-
-        let loadBundle = () => {
-            if (bundleCache[name]) {
-                return bundleCache[name];
+        return then(resolve(definition.bundleName), (Module) => {
+            if (!Module) {
+                return Promise.reject(new Error('Cannot find bundle with name "' + definition.bundleName + '"'));
             }
 
-            var nextLoader = () => {
-                if (!queue.length) {
-                    return Promise.reject(new Error('Cannot find bundle with name "' + definition.bundleName + '"'));
-                }
-
-                let loader = queue.shift();
-
-                return then(loader(name), result => {
-                    if (result) {
-                        return bundleCache[name] = result;
-                    } else {
-                        return nextLoader();
-                    }
-                });
-            };
-
-            return bundleCache[name] = nextLoader();
-        };
-
-        return then(loadBundle(), (Module) => {
             definition.Module = Module;
 
             return Module;
@@ -317,7 +343,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                 return definitions[module];
             }
 
-            return definitions[module] = normalizeDependencyDefinition(module, {});
+            return definitions[module] = normalizeDefinition(module, {});
         }
 
         console.log('UNKNOWN MODULE', module);
@@ -336,11 +362,11 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
         let load = () => {
             let promises = [
-                definition.instance ? null : loadModuleBundle(definition),
-                loadModuleDependencies(definition, params)
+                loadModuleDependencies(definition, params),
+                definition.instance ? null : loadModuleBundle(definition)
             ];
 
-            return all(promises, ([Module, dependencies]) => {
+            return all(promises, ([dependencies]) => {
                 let _factory = () => {
                     if (definition.instance) {
                         return definition.instance;
@@ -468,10 +494,10 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
              * Run GC to destroy unknown dependencies
              */
             close: () => {
-                _.forEach(definitions, (module) => {
-                    let instance = module.instance;
+                _.forEach(definitions, (definition) => {
+                    let instance = definition.instance;
 
-                    if (module.diSessionId && module.diSessionId !== id && instance) {
+                    if (!definition.isPersistent && definition.diSessionId && definition.diSessionId !== id && instance) {
                         if (instance.trigger) {
                             instance.trigger('di:destroy');
                         }
@@ -480,7 +506,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                             instance.destroy();
                         }
 
-                        module.instance = null;
+                        definition.instance = null;
                     }
                 });
             }
@@ -496,6 +522,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     di.put = (inputDefinition, instance) => {
         let definition = normalizeModule(inputDefinition);
         definition.instance = instance;
+        definition.isPersistent = true;
 
         return this;
     };
@@ -503,4 +530,20 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     return di;
 };
 
-export {createContainer, webpackResolver, staticResolver, then, all, qCatch};
+export {
+    createContainer,
+
+    webpackResolver,
+    staticResolver,
+    arrayResolver,
+
+    then,
+    all,
+    qCatch,
+
+    parseStringDefinition,
+    normalizeDefinitions,
+    normalizeDefinition,
+
+    factory
+};
