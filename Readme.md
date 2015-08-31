@@ -31,14 +31,16 @@ var di = createContainer({
         // Each dependency we will be automatically search via resolvers
         // You can write you own resolver, it just a function with one argument - name,
         // which will return module or Promise
-        // In this case, we create resolver from webpack require context. It can load all bundled modules
+        // In this case, we create resolver from webpack require context. It can load 
+        // all bundled modules
         webpackResolver([
             require.context('./ingredients', true, /\.js$/)
         ])
     ],
     dependencies: {
         // This is most simple usage, we define key "Salad" and specify dependencies
-        // When dependencies will be resolved, hash with their instances will be passed into Salad constructor
+        // When dependencies will be resolved, hash with their instances will be passed 
+        // into Salad constructor
         Salad: {
             pea: 'Pea',
             pickles: 'Pickles',
@@ -48,8 +50,9 @@ var di = createContainer({
             potato: 'boiledPotato'
         },
 
-        // boiledChicken will be created from Chicken module with boilFactory method. It must return chicken instance or
-        // Promise, that will return instance. This is kind of Aliases. It can be very useful, to produce
+        // boiledChicken will be created from Chicken module with boilFactory method. 
+        // It must return chicken instance or Promise, that will return instance. 
+        // This is some kind of Aliases. It can be very useful, to produce
         // the same class instances with different dependencies
         boiledChicken: 'Chicken.boilFactory',
 
@@ -58,7 +61,8 @@ var di = createContainer({
             water: 'Water'
         },
 
-        // Another aliasing. This syntax is to override dependencies. It will create Eggs instance with water dependency
+        // Another aliasing. This syntax is to override dependencies. It will create 
+        // Eggs instance with water dependency
         boiledEggs: ['Eggs', {
             water: 'Water'
         }],
