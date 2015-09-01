@@ -268,6 +268,26 @@ let normalizeDefinition = (dependencyId, config) => {
 };
 
 /**
+ * @param {DiDefinition} definition
+ * @param {{}} definitions
+ */
+let normalizeDefinitionDependencies = (definition, definitions) => {
+    _.forEach(definition.dependencies, (dependency, name) => {
+        if (typeof dependency === 'object' && !_.isArray(dependency)) {
+            dependency = [name, dependency];
+        }
+
+        if (_.isArray(dependency)) {
+            let depDefinition = normalizeDefinition(_.uniqueId(definition.id + '/' + name), dependency);
+            definitions[depDefinition.id] = depDefinition;
+            definition.dependencies[name] = depDefinition.id;
+
+            normalizeDefinitionDependencies(depDefinition, definitions);
+        }
+    });
+};
+
+/**
  * @param {{}} dependencies
  * @returns {{}}
  */
@@ -276,6 +296,10 @@ let normalizeDefinitions = (dependencies) => {
 
     _.forEach(dependencies, (config, dependencyId) => {
         definitions[dependencyId] = normalizeDefinition(dependencyId, config);
+    });
+
+    _.forEach(definitions, (definition) => {
+        normalizeDefinitionDependencies(definition, definitions);
     });
 
     return definitions;
@@ -541,6 +565,7 @@ export {
     all,
     qCatch,
 
+    normalizeDefinitionDependencies,
     parseStringDefinition,
     normalizeDefinitions,
     normalizeDefinition,

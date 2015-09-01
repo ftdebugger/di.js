@@ -242,6 +242,26 @@ describe('DI', function () {
                     }
                 });
             });
+
+            it('normalize dependencies', function () {
+                var defs = normalizeDefinitions({
+                    a: {
+                        b: ['b.produce', {
+                            c: 'c'
+                        }],
+                        d: {
+                            c: 'c'
+                        }
+                    }
+                });
+
+                expect(defs.a.id).to.equal('a');
+                expect(defs.a.dependencies.b).to.be.string;
+                expect(defs.a.dependencies.d).to.be.string;
+
+                expect(defs[defs.a.dependencies.b].dependencies.c).to.equal('c');
+                expect(defs[defs.a.dependencies.d].dependencies.c).to.equal('c');
+            });
         });
     });
 
@@ -553,6 +573,72 @@ describe('DI', function () {
                 session.close();
             });
         });
+    });
+
+    describe('unnamed dependencies', function () {
+
+        it('simple unnamed', function () {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: function (deps) {
+                            this.name = 'a';
+                            this.deps = deps;
+                        },
+                        b: {
+                            first: function (deps) {
+                                return {name: 'b', deps};
+                            }
+                        },
+                        c: function () {
+                            return {name: 'c'};
+                        }
+                    })
+                ],
+                dependencies: {
+                    a: {
+                        b: ['b.first', {c: 'c'}]
+                    }
+                }
+            });
+
+            let instance = di('a');
+            expect(instance.name).to.equal('a');
+            expect(instance.deps.b.name).to.equal('b');
+            expect(instance.deps.b.deps.c.name).to.equal('c');
+        });
+
+        it('different unnamed deps instances', function () {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: function (deps) {
+                            this.name = 'a';
+                            this.deps = deps;
+                        },
+                        b: {
+                            first: function (deps) {
+                                return {name: 'b', deps};
+                            }
+                        },
+                        c: function () {
+                            return {name: 'c'};
+                        }
+                    })
+                ],
+                dependencies: {
+                    a: {
+                        b: ['b.first', {c: 'c'}],
+                        d: ['b.first', {c: 'c'}]
+                    }
+                }
+            });
+
+            let instance = di('a');
+            expect(instance.deps.b).not.to.equal(instance.deps.d);
+            expect(instance.deps.b.deps.c).to.equal(instance.deps.d.deps.c);
+        });
+
     });
 
 });
