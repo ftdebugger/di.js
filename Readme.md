@@ -358,7 +358,7 @@ session.load('Dep1');
 // All not reused instances will be destroyed
 // close session, run GC. 
 session.close(); 
-``
+```
 
 Well, some synthetic example of this point:
 
