@@ -127,7 +127,7 @@ export default { // Good!
     factoryB: deps => new B(deps),
 };
 
-``
+```
 
 Resolvers
 ---------
@@ -285,6 +285,7 @@ dependencies: {
 
 4. Complete manual definition
 
+```js
 dependencies: {
     Dep1: [{
        "bundleName": "Dep2",
@@ -294,9 +295,11 @@ dependencies: {
        }
    }]
 }
+```
 
 5. Unnamed dependencies on the fly
 
+```js
 dependencies: {
     Dep1: {
         a: ["b", {
@@ -325,6 +328,7 @@ dependencies: {
         }
     }
 }
+```
 
 Dependency lifecycle
 --------------------
