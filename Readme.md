@@ -1,5 +1,5 @@
-DI
-==
+DI [![Build Status](https://travis-ci.org/ftdebugger/di.js.svg)](https://travis-ci.org/ftdebugger/di.js)
+========================================================================================================
 
 Install
 -------
