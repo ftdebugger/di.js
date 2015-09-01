@@ -335,3 +335,64 @@ Dependency lifecycle
 
 Every definition will be create once and it instance will be used for all dependencies. It allow to create dependency graph.
 If session mechanism is used, dependency can be destroyed via garbage collector. In this case it will be created when it needed again.
+
+Sessions
+--------
+
+Session is mechanism to simplify dependency lifecycle. This DI container is designed to cover scenario, when application 
+has only one entry point to dependency loading. It's sounds strange, but if we place this container into router and will fetch 
+root dependency only in this place we can get very light and powerful garbage collection mechanism.
+ 
+First of all API:
+
+``
+import {createContainer} from 'di.js';
+
+let di = createContainer(...);
+let session = di.session(); // create new session
+
+// During Dep1 loading instances from previous loading will be reused
+// load dependency. Same signature as di()
+session.load('Dep1'); 
+
+// All not reused instances will be destroyed
+// close session, run GC. 
+session.close(); 
+``
+
+Well, some synthetic example of this point:
+
+```js
+import {createContainer, webpackResolver, then} from 'di.js';
+import {router} from './router'; // some router
+
+let di = createContainer({
+    resolvers: [...],
+    dependencies: {
+        home: ['HomeLayout', {
+            header: 'BaseHeader',
+            content: 'HomeContent'
+        }],
+        
+        BaseHeader: {
+            model: 'UserAuth'
+        }
+    }
+});
+
+router.on(routeName => {
+    let session = di.session();
+
+    then(session.load(routeName), (layout) => {
+        // Backbone.View for example
+        layout.render();
+        
+        layout.$el.appendTo('body');
+        
+        session.close(); // run GC
+    });
+});
+```
+
+When route change: fire event and new session opened. We load all dependencies and reuse existent. When render complete 
+we destroy all instances, which was not used in this session.
