@@ -345,7 +345,7 @@ root dependency only in this place we can get very light and powerful garbage co
  
 First of all API:
 
-```
+```js
 import {createContainer} from 'di.js';
 
 let di = createContainer(...);
