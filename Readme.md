@@ -219,7 +219,7 @@ Every item in `dependencies` key will be convert to `Definition`. It's looks lik
 
 As you can see it is not very simple. So I suggest to use some sugar:
 
-1. Direct dependency declaration
+### Direct dependency declaration
 
 ```js
 dependencies: {
@@ -243,7 +243,7 @@ dependencies: {
 
 ```
 
-2. Aliasing
+### Aliasing
 
 ```js
 dependencies: {
@@ -261,7 +261,7 @@ dependencies: {
 
 ```
 
-3. Aliasing with dependency overriding
+### Aliasing with dependency overriding
 
 ```js
 dependencies: {
@@ -283,7 +283,7 @@ dependencies: {
 
 ```
 
-4. Complete manual definition
+### Complete manual definition
 
 ```js
 dependencies: {
@@ -297,7 +297,7 @@ dependencies: {
 }
 ```
 
-5. Unnamed dependencies on the fly
+### Unnamed dependencies on the fly
 
 ```js
 dependencies: {

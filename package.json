@@ -20,5 +20,6 @@
   },
   "dependencies": {
     "lodash": "*"
-  }
+  },
+  "respository": "git@github.com:ftdebugger/di.js.git"
 }
