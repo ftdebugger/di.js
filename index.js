@@ -1,5 +1,20 @@
-import _ from 'lodash';
+import * as lodash from 'lodash';
 
+// This ugly construction is compile to smaller sized file
+let {
+    extend,
+
+    defaults,
+    uniqueId,
+    values,
+
+    isArray,
+    isObject,
+    isFunction,
+
+    forEach,
+    map
+} = lodash;
 
 /**
  * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object}} DiDefinition
@@ -246,22 +261,22 @@ let normalizeDefinition = (dependencyId, config) => {
     };
 
     if (typeof config === 'string') {
-        _.extend(definition, parseStringDefinition(config));
-    } else if (_.isArray(config)) {
+        extend(definition, parseStringDefinition(config));
+    } else if (isArray(config)) {
         if (config.length === 1) {
-            definition.id = _.uniqueId('di');
+            definition.id = uniqueId('di');
 
-            _.extend(definition, config[0]);
+            extend(definition, config[0]);
         } else {
-            _.extend(definition, parseStringDefinition(config[0]), {dependencies: config[1]});
+            extend(definition, parseStringDefinition(config[0]), {dependencies: config[1]});
         }
-    } else if (_.isObject(config)) {
-        _.extend(definition, parseStringDefinition(dependencyId), {dependencies: config});
+    } else if (isObject(config)) {
+        extend(definition, parseStringDefinition(dependencyId), {dependencies: config});
     } else {
         throw new Error('Unknown type of dependency definition');
     }
 
-    return _.defaults(definition, {
+    return defaults(definition, {
         factory: 'factory',
         dependencies: {}
     });
@@ -272,13 +287,13 @@ let normalizeDefinition = (dependencyId, config) => {
  * @param {{}} definitions
  */
 let normalizeDefinitionDependencies = (definition, definitions) => {
-    _.forEach(definition.dependencies, (dependency, name) => {
-        if (typeof dependency === 'object' && !_.isArray(dependency)) {
+    forEach(definition.dependencies, (dependency, name) => {
+        if (typeof dependency === 'object' && !isArray(dependency)) {
             dependency = [name, dependency];
         }
 
-        if (_.isArray(dependency)) {
-            let depDefinition = normalizeDefinition(_.uniqueId(definition.id + '/' + name), dependency);
+        if (isArray(dependency)) {
+            let depDefinition = normalizeDefinition(uniqueId(definition.id + '/' + name), dependency);
             definitions[depDefinition.id] = depDefinition;
             definition.dependencies[name] = depDefinition.id;
 
@@ -294,11 +309,11 @@ let normalizeDefinitionDependencies = (definition, definitions) => {
 let normalizeDefinitions = (dependencies) => {
     let definitions = {};
 
-    _.forEach(dependencies, (config, dependencyId) => {
+    forEach(dependencies, (config, dependencyId) => {
         definitions[dependencyId] = normalizeDefinition(dependencyId, config);
     });
 
-    _.forEach(definitions, (definition) => {
+    forEach(definitions, (definition) => {
         normalizeDefinitionDependencies(definition, definitions);
     });
 
@@ -314,7 +329,7 @@ let normalizeDefinitions = (dependencies) => {
  */
 let factory = ({Module, factory}, dependencies) => {
     if (Module.__esModule === true) {
-        Module = _.values(Module)[0];
+        Module = values(Module)[0];
     }
 
     if (Module[factory]) {
@@ -402,7 +417,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                     let isNeedUpdate = !params.diSessionId || definition.diSessionId !== params.diSessionId;
                     definition.diSessionId = params.diSessionId;
 
-                    if (_.isFunction(instance.updateDependencies)) {
+                    if (isFunction(instance.updateDependencies)) {
                         if (isNeedUpdate) {
                             return then(instance.updateDependencies(dependencies), _ => instance);
                         }
@@ -437,10 +452,10 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
      * @returns {Promise<object>|object}
      */
     let loadModules = (dependencies, params) => {
-        let loaded = _.extend({}, params);
+        let loaded = extend({}, params);
 
         if (dependencies) {
-            let promises = _.map(dependencies, (dependencyName, key) => {
+            let promises = map(dependencies, (dependencyName, key) => {
                 return then(loadModule(dependencyName, params), dependency => loaded[key] = dependency);
             });
 
@@ -484,7 +499,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
      * @returns {{load: Function, close: Function}}
      */
     di.session = () => {
-        let id = _.uniqueId('di');
+        let id = uniqueId('di');
 
         return {
 
@@ -508,7 +523,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
              * Run GC to destroy unknown dependencies
              */
             close: () => {
-                _.forEach(definitions, (definition) => {
+                forEach(definitions, (definition) => {
                     let instance = definition.instance;
 
                     if (!definition.isPersistent && definition.diSessionId && definition.diSessionId !== id && instance) {
@@ -516,7 +531,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                             instance.trigger('di:destroy');
                         }
 
-                        if (_.isFunction(instance.destroy)) {
+                        if (isFunction(instance.destroy)) {
                             instance.destroy();
                         }
 
