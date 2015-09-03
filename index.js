@@ -306,15 +306,13 @@ let normalizeDefinitions = (dependencies) => {
 };
 
 /**
- * @param {DiDefinition} definition
+ * @param {{__esModule: boolean}|function} Module
+ * @param {string} factory
  * @param {{}} dependencies
  *
  * @returns {Promise<object>|object}
  */
-let factory = (definition, dependencies) => {
-    let Module = definition.Module,
-        factory = definition.factory;
-
+let factory = ({Module, factory}, dependencies) => {
     if (Module.__esModule === true) {
         Module = _.values(Module)[0];
     }
@@ -468,21 +466,14 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
      *
      * @returns {Promise<object>|object}
      */
-    let di = (module, params) => {
+    let di = (module, params = {}) => {
         let promise;
-
-        params = params || {};
 
         if (typeof module === 'string') {
             promise = loadModule(module, params);
         } else {
             promise = loadModules(module, params);
         }
-
-        qCatch(promise, err => {
-            console.error(err);
-            console.error(err.stack);
-        });
 
         return promise;
     };
@@ -507,8 +498,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
              *
              * @returns {Promise<object>|object}
              */
-            load: (module, params) => {
-                params = params || {};
+            load: (module, params = {}) => {
                 params.diSessionId = id;
 
                 return di(module, params);
