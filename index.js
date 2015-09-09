@@ -69,37 +69,6 @@ let qCatch = (promise, callback) => {
 };
 
 /**
- * @param {function|{keys: function}} require
- * @returns {Function}
- */
-let createLoader = function (require) {
-    let bundles = {};
-
-    require.keys().forEach((path) => {
-        let name = path.match(/\/([^\/]+)$/)[1];
-
-        bundles[name] = {path};
-    });
-
-    return (name) => {
-        let description = bundles[name],
-            bundleLoader;
-
-        if (description) {
-            bundleLoader = require(description.path);
-
-            if (typeof bundleLoader === 'function' && !bundleLoader.name) {
-                return new Promise((resolve) => {
-                    bundleLoader(resolve);
-                });
-            }
-
-            return bundleLoader;
-        }
-    };
-};
-
-/**
  * Usage:
  *
  * ```
@@ -154,9 +123,13 @@ let webpackResolver = (requires) => {
             bundleLoader = require();
 
             if (typeof bundleLoader === 'function' && !bundleLoader.name) {
-                return new Promise((resolve) => {
-                    bundleLoader(resolve);
-                });
+                if (bundleLoader.length === 1) {
+                    return new Promise((resolve) => {
+                        bundleLoader(resolve);
+                    });
+                } else if (bundleLoader.length === 0) {
+                    return bundleLoader();
+                }
             }
 
             return bundleLoader;

@@ -190,6 +190,9 @@ var di = createContainer({
             
             // with bundle-loader you can activate AMD style require, which means auto bundle splitting in webpack
             require.context('bundle!./views/', true, /(Layout).js$/),
+            
+            // same behavior with promise-loader
+            require.context('promise?global!./views/', true, /(Content).js$/),
         })
     ],
     dependencies: {}
