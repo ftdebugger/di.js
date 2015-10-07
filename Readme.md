@@ -399,3 +399,36 @@ router.on(routeName => {
 
 When route change: fire event and new session opened. We load all dependencies and reuse existent. When render complete 
 we destroy all instances, which was not used in this session.
+
+Serialization
+-------------
+
+You could serialize current DI state to restore it in another place. It is no magic here. If you want to use this feature
+you need to implement `serialize` instance method and `restore` static module method.
+
+```js
+let data = di.serialize();
+
+let newDi = createContainer(...);
+newDi.restore(data);
+```
+
+Module can be looks like
+
+```js
+export class User {
+
+    constructor(data) {
+        this.data = data;
+    }
+
+    serialize() {
+        return this.data; // Promise are supported too
+    }
+    
+    static restore(data) {
+        return new this(data);
+    }
+
+}
+```

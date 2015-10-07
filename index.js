@@ -7,14 +7,16 @@ let {
     defaults,
     uniqueId,
     values,
+    omit,
 
     isArray,
     isObject,
     isFunction,
 
     forEach,
+    filter,
     map
-} = lodash;
+    } = lodash;
 
 /**
  * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object}} DiDefinition
@@ -294,6 +296,20 @@ let normalizeDefinitions = (dependencies) => {
 };
 
 /**
+ * Extract module from ES6 definition
+ *
+ * @param {{__esModule: boolean}|function} Module
+ * @returns {*}
+ */
+let extractModule = (Module) => {
+    if (Module.__esModule === true) {
+        return values(omit(Module, '__esModule'))[0];
+    }
+
+    return Module;
+};
+
+/**
  * @param {{__esModule: boolean}|function} Module
  * @param {string} factory
  * @param {{}} dependencies
@@ -301,9 +317,7 @@ let normalizeDefinitions = (dependencies) => {
  * @returns {Promise<object>|object}
  */
 let factory = ({Module, factory}, dependencies) => {
-    if (Module.__esModule === true) {
-        Module = values(Module)[0];
-    }
+    Module = extractModule(Module);
 
     if (Module[factory]) {
         return Module[factory](dependencies);
@@ -527,6 +541,44 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
         definition.isPersistent = true;
 
         return this;
+    };
+
+    /**
+     * @returns {Promise<object>}
+     */
+    di.serialize = () => {
+        let serialized = {};
+
+        let serializable = filter(definitions, ({instance}) => {
+            return instance && isFunction(instance.serialize);
+        });
+
+        let serializedPromises = map(serializable, ({id, instance}) => {
+            return then(instance.serialize(), json => serialized[id] = json);
+        });
+
+        return all(serializedPromises, () => serialized);
+    };
+
+    /**
+     * @param {object} data
+     */
+    di.restore = (data) => {
+        let results = map(data, (moduleData, id) => {
+            let definition = normalizeModule(id);
+
+            return then(loadModuleBundle(definition), Module => {
+                Module = extractModule(Module);
+
+                if (!Module.restore) {
+                    throw new Error('Cannot restore module');
+                }
+
+                return then(Module.restore(moduleData), instance => definition.instance = instance);
+            });
+        });
+
+        return all(results, data => data);
     };
 
     return di;

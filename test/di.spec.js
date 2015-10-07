@@ -641,4 +641,47 @@ describe('DI', function () {
 
     });
 
+    describe('serialization', function () {
+        beforeEach(function () {
+            var Cls = function (data) {
+                this.data = data;
+
+                this.serialize = function () {
+                    return {
+                        test: 123
+                    };
+                };
+            };
+
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: {
+                            factory: function () {
+                                return new Cls();
+                            },
+                            restore: function (data) {
+                                return new Cls(data);
+                            }
+                        }
+                    })
+                ],
+                dependencies: {}
+            });
+        });
+
+        it('must serialize to object', function () {
+            di('a');
+
+            expect(di.serialize()).to.eql({a: {test: 123}});
+        });
+
+        it('must restore from object', function () {
+            di.restore({a: {test: 123}});
+
+            expect(di('a').data).to.eql({test: 123});
+        });
+
+    });
+
 });
