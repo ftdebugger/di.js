@@ -546,7 +546,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     /**
      * @returns {Promise<object>}
      */
-    di.serialize = () => {
+    di.serialize = (...args) => {
         let serialized = {};
 
         let serializable = filter(definitions, ({instance}) => {
@@ -554,7 +554,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
         });
 
         let serializedPromises = map(serializable, ({id, instance}) => {
-            return then(instance.serialize(), json => serialized[id] = json);
+            return then(instance.serialize(...args), json => serialized[id] = json);
         });
 
         return all(serializedPromises, () => serialized);
@@ -579,6 +579,15 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
         });
 
         return all(results, data => data);
+    };
+
+    /**
+     * Return raw definitions
+     *
+     * @returns {{}}
+     */
+    di.getDefinitions = () => {
+        return definitions;
     };
 
     return di;
