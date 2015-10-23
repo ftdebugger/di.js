@@ -36,7 +36,11 @@ let then = (promise, callback) => {
     if (promise && promise.then) {
         return promise.then(callback);
     } else {
-        return callback(promise);
+        try {
+            return callback(promise);
+        } catch (err) {
+            return Promise.reject(err);
+        }
     }
 };
 
@@ -52,7 +56,11 @@ let all = (values, callback) => {
     if (some) {
         return Promise.all(values).then(callback);
     } else {
-        return callback(values);
+        try {
+            return callback(values);
+        } catch (err) {
+            return Promise.reject(err);
+        }
     }
 };
 
@@ -562,32 +570,47 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
     /**
      * @param {object} data
+     * @param {*} args
      */
-    di.restore = (data) => {
-        let results = map(data, (moduleData, id) => {
-            let definition = normalizeModule(id);
-
-            return then(loadModuleBundle(definition), Module => {
-                Module = extractModule(Module);
-
-                if (!Module.restore) {
-                    throw new Error('Cannot restore module');
-                }
-
-                return then(Module.restore(moduleData), instance => definition.instance = instance);
-            });
-        });
+    di.restore = (data, ...args) => {
+        let results = map(data, (moduleData, id) => di.restoreModule(id, moduleData, ...args));
 
         return all(results, data => data);
     };
 
     /**
-     * Return raw definitions
+     * @param {string} id
+     * @param {*} args
      *
+     * @returns {Promise}
+     */
+    di.restoreModule = (id, ...args) => {
+        let definition = normalizeModule(id);
+
+        return then(loadModuleBundle(definition), Module => {
+            Module = extractModule(Module);
+
+            if (!Module.restore) {
+                throw new Error('Cannot restore module');
+            }
+
+            return then(Module.restore(...args), instance => definition.instance = instance);
+        });
+    };
+
+    /**
      * @returns {{}}
      */
     di.getDefinitions = () => {
         return definitions;
+    };
+
+    /**
+     * @param {string} id
+     * @returns {DiDefinition}
+     */
+    di.getDefinition = (id) => {
+        return normalizeModule(id);
     };
 
     return di;
