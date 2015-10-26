@@ -536,8 +536,8 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
             });
         };
 
-        functions(di).forEach(function (func, name) {
-            diSession[name] = func;
+        functions(di).forEach(function (name) {
+            diSession[name] = di[name];
         });
 
         return diSession;

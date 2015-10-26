@@ -578,9 +578,9 @@ describe('DI', function () {
             di = createContainer();
             let session = di.session();
 
-            expect(session.put).to.be.defined;
-            expect(session.session).to.be.defined;
-            expect(session.serialize).to.be.defined;
+            expect(session.put).not.to.be.undefined;
+            expect(session.session).not.to.be.undefined;
+            expect(session.serialize).not.to.be.undefined;
         });
     });
 
