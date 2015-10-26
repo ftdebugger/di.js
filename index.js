@@ -4,6 +4,7 @@ import * as lodash from 'lodash';
 let {
     extend,
 
+    functions,
     defaults,
     uniqueId,
     values,
@@ -496,45 +497,50 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     di.session = () => {
         let id = uniqueId('di');
 
-        return {
+        /**
+         * Work like original DI function
+         *
+         * @see di
+         *
+         * @param {string|object} module
+         * @param {{}} [params]
+         *
+         * @returns {Promise<object>|object}
+         */
+        let diSession = (module, params = {}) => {
+            params.diSessionId = id;
 
-            /**
-             * Work like original DI function
-             *
-             * @see di
-             *
-             * @param {string|object} module
-             * @param {{}} [params]
-             *
-             * @returns {Promise<object>|object}
-             */
-            load: (module, params = {}) => {
-                params.diSessionId = id;
-
-                return di(module, params);
-            },
-
-            /**
-             * Run GC to destroy unknown dependencies
-             */
-            close: () => {
-                forEach(definitions, (definition) => {
-                    let instance = definition.instance;
-
-                    if (!definition.isPersistent && definition.diSessionId && definition.diSessionId !== id && instance) {
-                        if (instance.trigger) {
-                            instance.trigger('di:destroy');
-                        }
-
-                        if (isFunction(instance.destroy)) {
-                            instance.destroy();
-                        }
-
-                        definition.instance = null;
-                    }
-                });
-            }
+            return di(module, params);
         };
+
+        diSession.load = diSession;
+
+        /**
+         * Run GC to destroy unknown dependencies
+         */
+        diSession.close = () => {
+            forEach(definitions, (definition) => {
+                let instance = definition.instance;
+
+                if (!definition.isPersistent && definition.diSessionId && definition.diSessionId !== id && instance) {
+                    if (instance.trigger) {
+                        instance.trigger('di:destroy');
+                    }
+
+                    if (isFunction(instance.destroy)) {
+                        instance.destroy();
+                    }
+
+                    definition.instance = null;
+                }
+            });
+        };
+
+        functions(di).forEach(function (func, name) {
+            diSession[name] = func;
+        });
+
+        return diSession;
     };
 
     /**

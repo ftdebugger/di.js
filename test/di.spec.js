@@ -573,6 +573,15 @@ describe('DI', function () {
                 session.close();
             });
         });
+
+        it('has all methods as parent', function () {
+            di = createContainer();
+            let session = di.session();
+
+            expect(session.put).to.be.defined;
+            expect(session.session).to.be.defined;
+            expect(session.serialize).to.be.defined;
+        });
     });
 
     describe('unnamed dependencies', function () {
