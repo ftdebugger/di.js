@@ -545,15 +545,14 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
     /**
      * @param {string} inputDefinition
-     * @param instance
+     * @param {*} instance
+     * @param {object} options
      *
      * @returns {DiContainer}
      */
-    di.put = (inputDefinition, instance) => {
+    di.put = (inputDefinition, instance, options) => {
         let definition = normalizeModule(inputDefinition);
-        definition.instance = instance;
-        definition.isPersistent = true;
-
+        extend(definition, {instance, isPersistent: true}, options);
         return this;
     };
 
