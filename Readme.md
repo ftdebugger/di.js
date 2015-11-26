@@ -4,7 +4,7 @@ DI [![Build Status](https://travis-ci.org/ftdebugger/di.js.svg)](https://travis-
 Install
 -------
 
-    npm install --save ftdebugger/di.js
+    npm install --save di.js
     
 Usage
 -----
@@ -399,6 +399,14 @@ router.on(routeName => {
 
 When route change: fire event and new session opened. We load all dependencies and reuse existent. When render complete 
 we destroy all instances, which was not used in this session.
+
+Additionally you can pass `defaults` dependencies to session, which will be passed into every instance, which would be created
+via container.
+
+```
+let session = di.session({someKey: 'some value'});
+let user = session('User'); // To User factory will be passed {someKey: 'some value'} as dependency
+```
 
 Serialization
 -------------
