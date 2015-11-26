@@ -582,6 +582,25 @@ describe('DI', function () {
             expect(session.session).not.to.be.undefined;
             expect(session.serialize).not.to.be.undefined;
         });
+
+        it('can pass default params to every dependency', function() {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: function (deps) {
+                            this.name = 'a';
+                            this.deps = deps;
+                        }
+                    })
+                ]
+            });
+
+            let session = di.session({abc: 1});
+            let a = session('a');
+
+            expect(a.name).to.equal('a');
+            expect(a.deps.abc).to.equal(1);
+        });
     });
 
     describe('unnamed dependencies', function () {

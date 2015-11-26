@@ -492,10 +492,14 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     /**
      * Create session of DI loading. When session close - all unknown dependencies will be truncated
      *
+     * @param {{}} [defaults]
+     *
      * @returns {{load: Function, close: Function}}
      */
-    di.session = () => {
+    di.session = (defaults = {}) => {
         let id = uniqueId('di');
+
+        defaults.diSessionId = id;
 
         /**
          * Work like original DI function
@@ -508,7 +512,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
          * @returns {Promise<object>|object}
          */
         let diSession = (module, params = {}) => {
-            params.diSessionId = id;
+            extend(params, defaults);
 
             return di(module, params);
         };
