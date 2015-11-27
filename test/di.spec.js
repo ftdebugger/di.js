@@ -90,6 +90,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     bundleName: 'test',
+                    parentId: 'test',
                     update: undefined,
                     factory: undefined
                 });
@@ -129,6 +130,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test',
+                    parentId: 'test',
                     bundleName: 'test',
                     factory: 'factory',
                     dependencies: {},
@@ -141,6 +143,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test',
+                    parentId: 'test.produce',
                     bundleName: 'test',
                     factory: 'produce',
                     dependencies: {},
@@ -155,6 +158,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test',
+                    parentId: 'test',
                     bundleName: 'test',
                     factory: 'factory',
                     dependencies: {
@@ -171,6 +175,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test.produce',
+                    parentId: 'test.produce',
                     bundleName: 'test',
                     factory: 'produce',
                     dependencies: {
@@ -185,6 +190,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test',
+                    parentId: 'abc',
                     bundleName: 'abc',
                     factory: 'factory',
                     dependencies: {},
@@ -197,6 +203,7 @@ describe('DI', function () {
 
                 expect(def).to.eql({
                     id: 'test',
+                    parentId: 'abc.produce',
                     bundleName: 'abc',
                     factory: 'produce',
                     dependencies: {},
@@ -242,13 +249,17 @@ describe('DI', function () {
                 expect(defs).to.eql({
                     test1: {
                         id: 'test1',
+                        parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {},
+                        dependencies: {
+                            abc: 'abc.produce'
+                        },
                         update: 'updateDependencies'
                     },
                     test: {
                         id: 'test',
+                        parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
                         dependencies: {abc: 'abc.produce'},
@@ -256,6 +267,7 @@ describe('DI', function () {
                     },
                     test2: {
                         id: 'test2',
+                        parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
                         dependencies: {abc: 'abc.factory'},
@@ -263,10 +275,76 @@ describe('DI', function () {
                     },
                     test3: {
                         id: 'test3',
+                        parentId: 'test3',
                         bundleName: 'test3',
                         factory: 'factory',
                         dependencies: {bundleName: 'HelloWorld'},
                         update: 'updateDependencies'
+                    }
+                });
+            });
+
+            it('nesting parenting', function () {
+                var defs = normalizeDefinitions({
+                    user: 'User.produce',
+                    userDeps: ['user', {
+                        abc: 'abc'
+                    }],
+                    userOverrideFactory: 'userDeps.overrided',
+                    userOverrideUpdate: 'userOverrideFactory#update',
+                    userOverrideDeps: ['userOverrideUpdate', {
+                        cde: 'cde'
+                    }]
+                });
+
+                expect(defs).to.eql({
+                    User: {
+                        id: 'User',
+                        parentId: 'User',
+                        bundleName: 'User',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    },
+                    user: {
+                        id: 'user',
+                        parentId: 'User',
+                        bundleName: 'User',
+                        factory: 'produce',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    },
+                    userDeps: {
+                        id: 'userDeps',
+                        parentId: 'user',
+                        bundleName: 'User',
+                        factory: 'produce',
+                        update: 'updateDependencies',
+                        dependencies: {abc: 'abc'}
+                    },
+                    userOverrideFactory: {
+                        id: 'userOverrideFactory',
+                        parentId: 'userDeps',
+                        bundleName: 'User',
+                        factory: 'overrided',
+                        update: 'updateDependencies',
+                        dependencies: {abc: 'abc'}
+                    },
+                    userOverrideUpdate: {
+                        id: 'userOverrideUpdate',
+                        parentId: 'userOverrideFactory',
+                        bundleName: 'User',
+                        factory: 'overrided',
+                        update: 'update',
+                        dependencies: {abc: 'abc'}
+                    },
+                    userOverrideDeps: {
+                        id: 'userOverrideDeps',
+                        parentId: 'userOverrideUpdate',
+                        bundleName: 'User',
+                        factory: 'overrided',
+                        update: 'update',
+                        dependencies: {cde: 'cde'}
                     }
                 });
             });
@@ -561,7 +639,7 @@ describe('DI', function () {
                                 this.deps = deps;
                             };
                         },
-                        dep1: function() {
+                        dep1: function () {
                             this.name = 'dep1';
                         }
                     })

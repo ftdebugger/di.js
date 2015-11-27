@@ -8,6 +8,7 @@ let {
     defaults,
     uniqueId,
     values,
+    keys,
     omit,
 
     isArray,
@@ -229,6 +230,7 @@ let parseStringDefinition = (definition) => {
     }
 
     return {
+        parentId: definition,
         bundleName: matches[1],
         factory: matches[3],
         update: matches[5]
@@ -238,9 +240,10 @@ let parseStringDefinition = (definition) => {
 /**
  * @param {string} dependencyId
  * @param {{}} config
- * @returns {*}
+ *
+ * @returns {DiDefinition}
  */
-let normalizeDefinition = (dependencyId, config) => {
+let normalizeDefinitionView = (dependencyId, config) => {
     let definition = {
         id: dependencyId
     };
@@ -257,10 +260,21 @@ let normalizeDefinition = (dependencyId, config) => {
         }
     } else if (isObject(config)) {
         extend(definition, parseStringDefinition(dependencyId), {dependencies: config});
+    } else if (typeof dependencyId === 'string' && !config) {
+        extend(definition, parseStringDefinition(dependencyId));
     } else {
         throw new Error('Unknown type of dependency definition');
     }
 
+    return definition;
+};
+
+/**
+ * @param {DiDefinition} definition
+ *
+ * @returns {DiDefinition}
+ */
+let normalizeDefinitionWithDefaults = (definition) => {
     return defaults(definition, {
         update: 'updateDependencies',
         factory: 'factory',
@@ -269,23 +283,13 @@ let normalizeDefinition = (dependencyId, config) => {
 };
 
 /**
- * @param {DiDefinition} definition
- * @param {{}} definitions
+ * @param {string} dependencyId
+ * @param {{}} config
+ *
+ * @returns {DiDefinition}
  */
-let normalizeDefinitionDependencies = (definition, definitions) => {
-    forEach(definition.dependencies, (dependency, name) => {
-        if (typeof dependency === 'object' && !isArray(dependency)) {
-            dependency = [name, dependency];
-        }
-
-        if (isArray(dependency)) {
-            let depDefinition = normalizeDefinition(uniqueId(definition.id + '/' + name), dependency);
-            definitions[depDefinition.id] = depDefinition;
-            definition.dependencies[name] = depDefinition.id;
-
-            normalizeDefinitionDependencies(depDefinition, definitions);
-        }
-    });
+let normalizeDefinition = (dependencyId, config) => {
+    return normalizeDefinitionWithDefaults(normalizeDefinitionView(dependencyId, config));
 };
 
 /**
@@ -295,13 +299,60 @@ let normalizeDefinitionDependencies = (definition, definitions) => {
 let normalizeDefinitions = (dependencies) => {
     let definitions = {};
 
-    forEach(dependencies, (config, dependencyId) => {
-        definitions[dependencyId] = normalizeDefinition(dependencyId, config);
-    });
+    /**
+     * @param {DiDefinition} definition
+     */
+    let normalizeDefinitionDependencies = (definition) => {
+        forEach(definition.dependencies, (dependency, name) => {
+            if (typeof dependency === 'object' && !isArray(dependency)) {
+                dependency = [name, dependency];
+            }
 
-    forEach(definitions, (definition) => {
-        normalizeDefinitionDependencies(definition, definitions);
-    });
+            if (isArray(dependency)) {
+                var depId = uniqueId(definition.id + '/' + name);
+                dependencies[depId] = dependency;
+
+                let depDefinition = process(depId);
+
+                definitions[depDefinition.id] = depDefinition;
+                definition.dependencies[name] = depDefinition.id;
+
+                normalizeDefinitionDependencies(depDefinition);
+            }
+        });
+    };
+
+    let process = (dependencyId) => {
+        if (definitions[dependencyId]) {
+            return definitions[dependencyId];
+        }
+
+        let definition = normalizeDefinitionView(dependencyId, dependencies[dependencyId]);
+
+        if (definition.id !== definition.parentId) {
+            let parentId;
+
+            if (dependencies[definition.parentId]) {
+                parentId = definition.parentId;
+            } else {
+                parentId = definition.bundleName;
+            }
+
+            let parent = process(parentId);
+
+            definition = defaults(definition, parent);
+            definition.parentId = parentId;
+            definition.bundleName = parent.bundleName;
+        } else {
+            definition = normalizeDefinitionWithDefaults(definition);
+        }
+
+        normalizeDefinitionDependencies(definition);
+
+        return definitions[dependencyId] = definition;
+    };
+
+    keys(dependencies).forEach(process);
 
     return definitions;
 };
@@ -638,7 +689,6 @@ export {
     all,
     qCatch,
 
-    normalizeDefinitionDependencies,
     parseStringDefinition,
     normalizeDefinitions,
     normalizeDefinition,
