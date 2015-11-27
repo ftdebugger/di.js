@@ -20,7 +20,7 @@ let {
     } = lodash;
 
 /**
- * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object}} DiDefinition
+ * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
  */
 
 /**
@@ -221,7 +221,7 @@ let arrayResolver = (resolvers) => {
  */
 let parseStringDefinition = (definition) => {
     let matches = definition ?
-        definition.match(/^([^.]+)(\.(.+))?$/) :
+        definition.match(/^([^.#]+)(\.([^#]+))?(#(.+))?$/) :
         null;
 
     if (!matches) {
@@ -230,7 +230,8 @@ let parseStringDefinition = (definition) => {
 
     return {
         bundleName: matches[1],
-        factory: matches[3]
+        factory: matches[3],
+        update: matches[5]
     };
 };
 
@@ -261,6 +262,7 @@ let normalizeDefinition = (dependencyId, config) => {
     }
 
     return defaults(definition, {
+        update: 'updateDependencies',
         factory: 'factory',
         dependencies: {}
     });
@@ -413,9 +415,9 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                     let isNeedUpdate = !params.diSessionId || definition.diSessionId !== params.diSessionId;
                     definition.diSessionId = params.diSessionId;
 
-                    if (isFunction(instance.updateDependencies)) {
+                    if (isFunction(instance[definition.update])) {
                         if (isNeedUpdate) {
-                            return then(instance.updateDependencies(dependencies), _ => instance);
+                            return then(instance[definition.update](dependencies), _ => instance);
                         }
                     }
 

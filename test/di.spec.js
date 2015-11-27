@@ -87,14 +87,31 @@ describe('DI', function () {
         describe('parseStringDefinition', function () {
             it('correct parse simple module name', function () {
                 var def = parseStringDefinition('test');
-                expect(def.bundleName).to.equal('test');
-                expect(def.factory).to.be.undefined;
+
+                expect(def).to.eql({
+                    bundleName: 'test',
+                    update: undefined,
+                    factory: undefined
+                });
             });
 
             it('correct parse module name with factory', function () {
                 var def = parseStringDefinition('test.produce');
                 expect(def.bundleName).to.equal('test');
                 expect(def.factory).to.be.equal('produce');
+            });
+
+            it('correct parse module name with update function', function () {
+                var def = parseStringDefinition('test#update');
+                expect(def.bundleName).to.equal('test');
+                expect(def.update).to.be.equal('update');
+            });
+
+            it('correct parse module name with factory and update function', function () {
+                var def = parseStringDefinition('test.produce#update');
+                expect(def.bundleName).to.equal('test');
+                expect(def.factory).to.be.equal('produce');
+                expect(def.update).to.be.equal('update');
             });
 
             it('empty string produce error', function () {
@@ -114,7 +131,8 @@ describe('DI', function () {
                     id: 'test',
                     bundleName: 'test',
                     factory: 'factory',
-                    dependencies: {}
+                    dependencies: {},
+                    update: 'updateDependencies'
                 });
             });
 
@@ -125,7 +143,8 @@ describe('DI', function () {
                     id: 'test',
                     bundleName: 'test',
                     factory: 'produce',
-                    dependencies: {}
+                    dependencies: {},
+                    update: 'updateDependencies'
                 });
             });
 
@@ -140,7 +159,8 @@ describe('DI', function () {
                     factory: 'factory',
                     dependencies: {
                         abc: 'abc'
-                    }
+                    },
+                    update: 'updateDependencies'
                 });
             });
 
@@ -155,7 +175,8 @@ describe('DI', function () {
                     factory: 'produce',
                     dependencies: {
                         abc: 'abc'
-                    }
+                    },
+                    update: 'updateDependencies'
                 });
             });
 
@@ -166,7 +187,8 @@ describe('DI', function () {
                     id: 'test',
                     bundleName: 'abc',
                     factory: 'factory',
-                    dependencies: {}
+                    dependencies: {},
+                    update: 'updateDependencies'
                 });
             });
 
@@ -177,7 +199,8 @@ describe('DI', function () {
                     id: 'test',
                     bundleName: 'abc',
                     factory: 'produce',
-                    dependencies: {}
+                    dependencies: {},
+                    update: 'updateDependencies'
                 });
             });
 
@@ -197,7 +220,8 @@ describe('DI', function () {
                     factory: 'produce',
                     dependencies: {
                         abc: 'abc'
-                    }
+                    },
+                    update: 'updateDependencies'
                 });
             });
 
@@ -220,25 +244,29 @@ describe('DI', function () {
                         id: 'test1',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {}
+                        dependencies: {},
+                        update: 'updateDependencies'
                     },
                     test: {
                         id: 'test',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {abc: 'abc.produce'}
+                        dependencies: {abc: 'abc.produce'},
+                        update: 'updateDependencies'
                     },
                     test2: {
                         id: 'test2',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {abc: 'abc.factory'}
+                        dependencies: {abc: 'abc.factory'},
+                        update: 'updateDependencies'
                     },
                     test3: {
                         id: 'test3',
                         bundleName: 'test3',
                         factory: 'factory',
-                        dependencies: {bundleName: 'HelloWorld'}
+                        dependencies: {bundleName: 'HelloWorld'},
+                        update: 'updateDependencies'
                     }
                 });
             });
@@ -520,6 +548,37 @@ describe('DI', function () {
                 expect(instance.deps.b.name).to.equal('b');
             });
         });
+
+        it('run update dependencies method on every instance', function () {
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        test: function () {
+                            this.invoke = 0;
+                            this.name = 'test';
+                            this.update = function (deps) {
+                                this.invoke++;
+                                this.deps = deps;
+                            };
+                        },
+                        dep1: function() {
+                            this.name = 'dep1';
+                        }
+                    })
+                ],
+                dependencies: {
+                    test1: ['test#update', {
+                        dep: 'dep1'
+                    }]
+                }
+            });
+
+            let instance = di('test1');
+
+            expect(instance.name).to.equal('test');
+            expect(instance.invoke).to.equal(1);
+            expect(instance.deps.dep.name).to.equal('dep1');
+        });
     });
 
     describe('sessions', function () {
@@ -583,7 +642,7 @@ describe('DI', function () {
             expect(session.serialize).not.to.be.undefined;
         });
 
-        it('can pass default params to every dependency', function() {
+        it('can pass default params to every dependency', function () {
             di = createContainer({
                 resolvers: [
                     staticResolver({
