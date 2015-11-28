@@ -30,18 +30,23 @@ let {
 
 /**
  * @param {Promise|*} promise
- * @param {function} callback
+ * @param {function} success
+ * @param {function} [error]
  *
  * @returns {Promise|*}
  */
-let then = (promise, callback) => {
+let then = (promise, success, error) => {
     if (promise && promise.then) {
-        return promise.then(callback);
+        return promise.then(success, error);
     } else {
         try {
-            return callback(promise);
+            return success(promise);
         } catch (err) {
-            return Promise.reject(err);
+            if (error) {
+                return error(err);
+            } else {
+                return Promise.reject(err);
+            }
         }
     }
 };
@@ -49,19 +54,24 @@ let then = (promise, callback) => {
 /**
  * @param {(Promise|*)[]} values
  * @param {function} callback
+ * @param {function} [error]
  *
  * @returns {Promise|*}
  */
-let all = (values, callback) => {
+let all = (values, callback, error) => {
     let some = values.some(promise => Boolean(promise && promise.then));
 
     if (some) {
-        return Promise.all(values).then(callback);
+        return Promise.all(values).then(callback, error);
     } else {
         try {
             return callback(values);
         } catch (err) {
-            return Promise.reject(err);
+            if (error) {
+                return error(err);
+            } else {
+                return Promise.reject(err);
+            }
         }
     }
 };
@@ -422,7 +432,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
         return then(resolve(definition.bundleName), (Module) => {
             if (!Module) {
-                return Promise.reject(new Error('Cannot find bundle with name "' + definition.bundleName + '"'));
+                new Error('Cannot find bundle with name "' + definition.bundleName + '"');
             }
 
             definition.Module = Module;

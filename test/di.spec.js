@@ -973,4 +973,37 @@ describe('DI', function () {
 
     });
 
+    describe('error handling', function () {
+        beforeEach(function(){
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        syncModule: {
+                            factory: () => {
+                                throw new Error()
+                            }
+                        },
+                        asyncModule: {
+                            factory: () => {
+                                return Promise.reject();
+                            }
+                        }
+                    })
+                ]
+            });
+        });
+
+        it('can handle sync errors as promise reject', function (done) {
+            di('syncModule').then(() => done('Error was not generated'), () => done());
+        });
+
+        it('can handle async errors as promise reject', function (done) {
+            di('asyncModule').then(() => done('Error was not generated'), () => done());
+        });
+
+        it('can handle error when load unknown modules', function (done) {
+            di('UnknownModule').then(() => done('Error was not generated'), () => done());
+        });
+    });
+
 });
