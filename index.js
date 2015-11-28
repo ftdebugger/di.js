@@ -251,7 +251,7 @@ let normalizeDefinitionView = (dependencyId, config) => {
     if (typeof config === 'string') {
         extend(definition, parseStringDefinition(config));
     } else if (isArray(config)) {
-        if (config.length === 1) {
+        if (typeof config[0] === 'object') {
             definition.id = uniqueId('di');
 
             extend(definition, config[0]);
@@ -308,8 +308,20 @@ let normalizeDefinitions = (dependencies) => {
                 dependency = [name, dependency];
             }
 
+            if (typeof dependency === 'string' && !dependencies[dependency]) {
+                let stringDefinition = parseStringDefinition(dependency);
+
+                // If we use bundleName as dependency, and bundle is not defined in global definitions, we need to create it
+                // elsewhere create dynamic definition
+                if (stringDefinition.bundleName === dependency) {
+                    dependencies[dependency] = process(dependency).id;
+                } else {
+                    dependency = [dependency, {}];
+                }
+            }
+
             if (isArray(dependency)) {
-                var depId = uniqueId(definition.id + '/' + name);
+                var depId = definition.id + '/' + name;
                 dependencies[depId] = dependency;
 
                 let depDefinition = process(depId);
@@ -432,9 +444,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
             return definitions[module] = normalizeDefinition(module, {});
         }
 
-        console.log('UNKNOWN MODULE', module);
-
-        throw new Error('Unknown module');
+        throw new Error('Unknown module: ' + JSON.stringify(module));
     };
 
     /**

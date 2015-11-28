@@ -252,9 +252,7 @@ describe('DI', function () {
                         parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {
-                            abc: 'abc.produce'
-                        },
+                        dependencies: {abc: 'test/abc'},
                         update: 'updateDependencies'
                     },
                     test: {
@@ -262,7 +260,7 @@ describe('DI', function () {
                         parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {abc: 'abc.produce'},
+                        dependencies: {abc: 'test/abc'},
                         update: 'updateDependencies'
                     },
                     test2: {
@@ -270,7 +268,7 @@ describe('DI', function () {
                         parentId: 'test',
                         bundleName: 'test',
                         factory: 'factory',
-                        dependencies: {abc: 'abc.factory'},
+                        dependencies: {abc: 'test2/abc'},
                         update: 'updateDependencies'
                     },
                     test3: {
@@ -279,6 +277,116 @@ describe('DI', function () {
                         bundleName: 'test3',
                         factory: 'factory',
                         dependencies: {bundleName: 'HelloWorld'},
+                        update: 'updateDependencies'
+                    },
+                    HelloWorld: {
+                        id: 'HelloWorld',
+                        parentId: 'HelloWorld',
+                        bundleName: 'HelloWorld',
+                        factory: 'factory',
+                        dependencies: {},
+                        update: 'updateDependencies'
+                    },
+                    abc: {
+                        id: 'abc',
+                        parentId: 'abc',
+                        bundleName: 'abc',
+                        factory: 'factory',
+                        dependencies: {},
+                        update: 'updateDependencies'
+                    },
+                    'test/abc': {
+                        id: 'test/abc',
+                        parentId: 'abc',
+                        bundleName: 'abc',
+                        factory: 'produce',
+                        dependencies: {},
+                        update: 'updateDependencies'
+                    },
+                    'test2/abc': {
+                        id: 'test2/abc',
+                        parentId: 'abc',
+                        bundleName: 'abc',
+                        factory: 'factory',
+                        dependencies: {},
+                        update: 'updateDependencies'
+                    }
+                });
+            });
+
+            it('nesting definitions', function () {
+                var defs = normalizeDefinitions({
+                    test: 'Test',
+                    user: ['User', {
+                        test1: 'test',
+                        test2: 'Test',
+                        test3: 'Test.update',
+                        test4: ['Test', {}],
+                        test5: 'test.update'
+                    }]
+                });
+
+                expect(defs).to.eql({
+                    Test: {
+                        bundleName: 'Test',
+                        dependencies: {},
+                        factory: 'factory',
+                        id: 'Test',
+                        parentId: 'Test',
+                        update: 'updateDependencies'
+                    },
+                    test: {
+                        bundleName: 'Test',
+                        dependencies: {},
+                        factory: 'factory',
+                        id: 'test',
+                        parentId: 'Test',
+                        update: 'updateDependencies'
+                    },
+                    User: {
+                        bundleName: 'User',
+                        dependencies: {},
+                        factory: 'factory',
+                        id: 'User',
+                        parentId: 'User',
+                        update: 'updateDependencies'
+                    },
+                    user: {
+                        bundleName: 'User',
+                        dependencies: {
+                            test1: 'test',
+                            test2: 'Test',
+                            test3: 'user/test3',
+                            test4: 'user/test4',
+                            test5: 'user/test5'
+                        },
+                        factory: 'factory',
+                        id: 'user',
+                        parentId: 'User',
+                        update: 'updateDependencies'
+                    },
+                    'user/test3': {
+                        bundleName: 'Test',
+                        dependencies: {},
+                        factory: 'update',
+                        id: 'user/test3',
+                        parentId: 'Test',
+                        update: 'updateDependencies'
+                    },
+                    'user/test4': {
+                        bundleName: 'Test',
+                        dependencies: {},
+                        factory: 'factory',
+                        id: 'user/test4',
+                        parentId: 'Test',
+                        update: 'updateDependencies'
+                    },
+                    'user/test5': {
+                        bundleName: 'Test',
+                        dependencies: {},
+                        factory: 'update',
+                        id: 'user/test5',
+                        parentId: 'test',
                         update: 'updateDependencies'
                     }
                 });
@@ -345,6 +453,22 @@ describe('DI', function () {
                         factory: 'overrided',
                         update: 'update',
                         dependencies: {cde: 'cde'}
+                    },
+                    abc: {
+                        id: 'abc',
+                        parentId: 'abc',
+                        bundleName: 'abc',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    },
+                    cde: {
+                        id: 'cde',
+                        parentId: 'cde',
+                        bundleName: 'cde',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {}
                     }
                 });
             });
