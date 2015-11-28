@@ -200,7 +200,7 @@ var di = createContainer({
 ```
 
 Webpack tell, where modules are placed and resolver create map with name => path. As module name it will be use filename without
-extension. This means, if you file has name `./states/SidebarState.js` you can get it with `di('SidebarState')`. Unique names required!
+extension. This means, if your file has name `./states/SidebarState.js` you can get it with `di('SidebarState')`. Unique names required!
 
 Dependency definition
 ---------------------
@@ -319,11 +319,11 @@ dependencies: {
         "bundleName": "Dep1",
         "factory": "factory",
         "dependencies": {
-            "a": "Dep1/a####"
+            "a": "Dep1/a"
         }
     },
-    'Dep1/a####': {
-        "id": "Dep1/a####",
+    'Dep1/a': {
+        "id": "Dep1/a",
         "bundleName": "b",
         "factory": "factory",
         "dependencies": {
@@ -372,9 +372,14 @@ import {router} from './router'; // some router
 let di = createContainer({
     resolvers: [...],
     dependencies: {
-        home: ['HomeLayout', {
+        home: ['BaseLayout', {
             header: 'BaseHeader',
             content: 'HomeContent'
+        }],
+
+        profile: ['BaseLayout', {
+            header: 'BaseHeader',
+            content: 'ProfileContent'
         }],
         
         BaseHeader: {
@@ -386,7 +391,7 @@ let di = createContainer({
 router.on(routeName => {
     let session = di.session();
 
-    then(session.load(routeName), (layout) => {
+    then(session(routeName), (layout) => {
         // Backbone.View for example
         layout.render();
         
@@ -398,7 +403,10 @@ router.on(routeName => {
 ```
 
 When route change: fire event and new session opened. We load all dependencies and reuse existent. When render complete 
-we destroy all instances, which was not used in this session.
+we destroy all instances, which was not used in this session. In this example if first home router was we create in container
+`BaseLayout`, `BaseHeader`, `HomeContent` and `UserAuth`. When router change to 'profile' we additionally create `ProfileContent`
+and pass it to existent `BaseLayout` which was created on previous route. When GC fired it clean `HomeContent`, because nobody
+load it in this session.
 
 Additionally you can pass `defaults` dependencies to session, which will be passed into every instance, which would be created
 via container.
