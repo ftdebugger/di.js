@@ -20,6 +20,9 @@ let {
     map
     } = lodash;
 
+const DEFAULT_FACTORY = 'factory';
+const DEFAULT_UPDATE = 'updateDependencies';
+
 /**
  * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
  */
@@ -397,15 +400,26 @@ let extractModule = (Module) => {
  * @param {{__esModule: boolean}|function} Module
  * @param {string} factory
  * @param {{}} dependencies
+ * @param {string} id
  *
  * @returns {Promise<object>|object}
  */
-let factory = ({Module, factory}, dependencies) => {
+let factory = ({Module, factory, id}, dependencies) => {
     Module = extractModule(Module);
 
     if (Module[factory]) {
         return Module[factory](dependencies);
     } else {
+        var moduleType = typeof Module;
+
+        if (factory && factory !== DEFAULT_FACTORY) {
+            throw new Error('Module "' + id + '" has no factory with name "' + factory + '"');
+        }
+
+        if (moduleType !== 'function') {
+            throw new Error('Module "' + id + '" cannot be constructed, because has ' + moduleType + ' type');
+        }
+
         return new Module(dependencies);
     }
 };
@@ -432,7 +446,7 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
         return then(resolve(definition.bundleName), (Module) => {
             if (!Module) {
-                new Error('Cannot find bundle with name "' + definition.bundleName + '"');
+                throw new Error('Cannot find bundle with name "' + definition.bundleName + '"');
             }
 
             definition.Module = Module;
@@ -483,6 +497,10 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
                 // If instance has updateDependencies invoke it before complete DI resolve
                 return then(_factory(), instance => {
+                    if (!instance) {
+                        throw new Error('Factory of "' + definition.id + '" return instance of ' + (typeof instance) + ' type');
+                    }
+
                     let isNeedUpdate = !params.diSessionId || definition.diSessionId !== params.diSessionId;
                     definition.diSessionId = params.diSessionId;
 
@@ -490,6 +508,8 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
                         if (isNeedUpdate) {
                             return then(instance[definition.update](dependencies), _ => instance);
                         }
+                    } else if (definition.update && definition.update !== DEFAULT_UPDATE) {
+                        throw new Error('Module "' + definition.id + '" has no instance method with name "' + definition.update + '"');
                     }
 
                     return instance;

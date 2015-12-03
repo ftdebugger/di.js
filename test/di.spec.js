@@ -980,29 +980,54 @@ describe('DI', function () {
                     staticResolver({
                         syncModule: {
                             factory: () => {
-                                throw new Error()
+                                throw new Error('sync error')
                             }
                         },
                         asyncModule: {
                             factory: () => {
-                                return Promise.reject();
+                                return Promise.reject(new Error('async error'));
                             }
+                        },
+                        emptyFactory: {
+                            factory: () => {
+
+                            }
+                        },
+                        notValidModule: 12,
+                        validModule: function () {
+
                         }
                     })
                 ]
             });
         });
 
-        it('can handle sync errors as promise reject', function (done) {
-            di('syncModule').then(() => done('Error was not generated'), () => done());
+        it('can handle sync errors as promise reject', function () {
+            return expect(di('syncModule')).to.eventually.be.rejectedWith(Error, 'sync error');
         });
 
-        it('can handle async errors as promise reject', function (done) {
-            di('asyncModule').then(() => done('Error was not generated'), () => done());
+        it('can handle async errors as promise reject', function () {
+            return expect(di('asyncModule')).to.eventually.be.rejectedWith(Error, 'async error');
         });
 
-        it('can handle error when load unknown modules', function (done) {
-            di('UnknownModule').then(() => done('Error was not generated'), () => done());
+        it('can handle error when load unknown modules', function () {
+            return expect(di('UnknownModule')).to.eventually.be.rejectedWith(Error, 'Error: Cannot find bundle with name "UnknownModule"');
+        });
+
+        it('can handle error when factory return nothing', function () {
+            return expect(di('emptyFactory')).to.eventually.be.rejectedWith(Error, 'Error: Factory of "emptyFactory" return instance of undefined type');
+        });
+
+        it('can handle error when module is not valid', function () {
+            return expect(di('notValidModule')).to.eventually.be.rejectedWith(Error, 'Error: Module "notValidModule" cannot be constructed, because has number type');
+        });
+
+        it('can handle error when factory not found', function () {
+            return expect(di('validModule.produce')).to.eventually.be.rejectedWith(Error, 'Error: Module "validModule.produce" has no factory with name "produce"');
+        });
+
+        it('can handle error when update not found', function () {
+            return expect(di('validModule#update')).to.eventually.be.rejectedWith(Error, 'Error: Module "validModule#update" has no instance method with name "update"');
         });
     });
 
