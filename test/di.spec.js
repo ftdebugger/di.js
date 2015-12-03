@@ -1037,6 +1037,13 @@ describe('DI', function () {
             expect(di.getDefinition('validModule').abc).to.equal(1);
         });
 
+        it('definition dependencies is not shared', function () {
+            var sourceDefinition = di.getDefinition('validModule');
+            let clone = di.clone({cloneInstances: true});
+
+            expect(clone.getDefinition('validModule').dependencies).not.to.equal(sourceDefinition.dependencies);
+        });
+
     });
 
     describe('error handling', function () {

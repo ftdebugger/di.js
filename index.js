@@ -290,8 +290,8 @@ let normalizeDefinitionView = (dependencyId, config) => {
  */
 let normalizeDefinitionWithDefaults = (definition) => {
     return defaults(definition, {
-        update: 'updateDependencies',
-        factory: 'factory',
+        factory: DEFAULT_FACTORY,
+        update: DEFAULT_UPDATE,
         dependencies: {}
     });
 };
@@ -761,7 +761,10 @@ let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve}
         let newDefinitions = {};
 
         forEach(definitions, (definition, id) => {
-            newDefinitions[id] = cloneInstances ? clone(definition) : omit(definition, 'instance');
+            var newDefinition = cloneInstances ? clone(definition) : omit(definition, 'instance');
+            newDefinition.dependencies = clone(newDefinition.dependencies);
+
+            newDefinitions[id] = newDefinition;
         });
 
         return createContainer({
