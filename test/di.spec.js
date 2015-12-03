@@ -973,6 +973,72 @@ describe('DI', function () {
 
     });
 
+    describe('destroy', function () {
+
+        beforeEach(function () {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        validModule: function () {
+
+                        }
+                    })
+                ]
+            });
+        });
+
+        it('destroy all instances', function () {
+            let instance = di('validModule');
+            expect(di.getDefinition('validModule').instance).to.equal(instance);
+
+            di.destroy();
+            expect(di.getDefinition('validModule').instance).to.equal(null);
+        });
+
+    });
+
+    describe('clone', function () {
+
+        beforeEach(function () {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        validModule: function () {
+
+                        }
+                    })
+                ]
+            });
+        });
+
+        it('without instances', function () {
+            let instance = di('validModule');
+            let clone = di.clone();
+
+            expect(di.getDefinition('validModule').instance).to.equal(instance);
+            expect(clone.getDefinition('validModule').instance).to.equal(undefined);
+        });
+
+        it('with instances', function () {
+            let instance = di('validModule');
+            let clone = di.clone({cloneInstances: true});
+
+            expect(di.getDefinition('validModule').instance).to.equal(instance);
+            expect(clone.getDefinition('validModule').instance).to.equal(instance);
+        });
+
+        it('definition is not shared', function () {
+            di.getDefinition('validModule').abc = 1;
+
+            let clone = di.clone({cloneInstances: true});
+            clone.getDefinition('validModule').abc = 2;
+
+
+            expect(di.getDefinition('validModule').abc).to.equal(1);
+        });
+
+    });
+
     describe('error handling', function () {
         beforeEach(function(){
             di = createContainer({

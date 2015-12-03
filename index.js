@@ -8,6 +8,7 @@ let {
     defaults,
     uniqueId,
     values,
+    clone,
     keys,
     omit,
 
@@ -428,11 +429,19 @@ let factory = ({Module, factory, id}, dependencies) => {
  * @param {function[]} resolvers
  * @param {object} dependencies
  *
+ * @param {object} [definitions]
+ * @param {function} [resolve]
+ *
  * @returns {function}
  */
-let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
-    let definitions = normalizeDefinitions(dependencies),
+let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve} = {}) => {
+    if (!definitions) {
+        definitions = normalizeDefinitions(dependencies);
+    }
+
+    if (!resolve) {
         resolve = arrayResolver(resolvers);
+    }
 
     /**
      * @param {DiDefinition} definition
@@ -565,6 +574,29 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
     };
 
     /**
+     * @param {DiDefinition} definition
+     * @param {boolean} trigger
+     * @param {boolean} destroy
+     */
+    let destroyInstance = (definition, {trigger = true, destroy = true} = {}) => {
+        let instance = definition.instance;
+
+        if (!instance) {
+            return;
+        }
+
+        if (trigger && isFunction(instance.trigger)) {
+            instance.trigger('di:destroy');
+        }
+
+        if (destroy && isFunction(instance.destroy)) {
+            instance.destroy();
+        }
+
+        definition.instance = null;
+    };
+
+    /**
      * @param {string|object} module
      * @param {{}} [params]
      *
@@ -614,21 +646,15 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
 
         /**
          * Run GC to destroy unknown dependencies
+         *
+         * @param {{trigger: boolean, destroy: boolean}} options
          */
-        diSession.close = () => {
+        diSession.close = (options) => {
             forEach(definitions, (definition) => {
                 let instance = definition.instance;
 
                 if (!definition.isPersistent && definition.diSessionId && definition.diSessionId !== id && instance) {
-                    if (instance.trigger) {
-                        instance.trigger('di:destroy');
-                    }
-
-                    if (isFunction(instance.destroy)) {
-                        instance.destroy();
-                    }
-
-                    definition.instance = null;
+                    destroyInstance(definition, options);
                 }
             });
         };
@@ -713,6 +739,35 @@ let createContainer = ({resolvers = [], dependencies = {}} = {}) => {
      */
     di.getDefinition = (id) => {
         return normalizeModule(id);
+    };
+
+    /**
+     * Destroy all definitions and clean up container
+     *
+     * @param {{trigger: boolean, destroy: boolean}} options
+     */
+    di.destroy = (options) => {
+        forEach(definitions, definition => destroyInstance(definition, options));
+    };
+
+    /**
+     * Clone container with definitions and resolvers
+     *
+     * @property {boolean} cloneInstances
+     *
+     * @returns {function}
+     */
+    di.clone = ({cloneInstances = false} = {}) => {
+        let newDefinitions = {};
+
+        forEach(definitions, (definition, id) => {
+            newDefinitions[id] = cloneInstances ? clone(definition) : omit(definition, 'instance');
+        });
+
+        return createContainer({
+            resolvers: resolvers,
+            definitions: newDefinitions
+        })
     };
 
     return di;
