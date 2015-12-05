@@ -9,6 +9,7 @@ import {
     normalizeDefinition,
 
     createContainer,
+    extractModule,
 
     webpackResolver,
     staticResolver,
@@ -1074,6 +1075,33 @@ describe('DI', function () {
             expect(clone.getDefinition('validModule').dependencies).not.to.equal(sourceDefinition.dependencies);
         });
 
+    });
+
+    describe('extract module', function () {
+        it('extract simple module', function () {
+            var module = () => {};
+            expect(extractModule(module)).to.equal(module);
+        });
+
+        it('extract simple module (object)', function () {
+            var module = {};
+            expect(extractModule(module)).to.equal(module);
+        });
+
+        it('extract es6 module', function () {
+            var module = {__esModule: true, SomeModule: () => {}};
+            expect(extractModule(module)).to.equal(module.SomeModule);
+        });
+
+        it('extract es6 module (object)', function () {
+            var module = {__esModule: true, SomeModule: {}};
+            expect(extractModule(module)).to.equal(module.SomeModule);
+        });
+
+        it('extract es6 module with additional not Class exports', function () {
+            var module = {__esModule: true, abc: 12, SomeModule: () => {}};
+            expect(extractModule(module)).to.equal(module.SomeModule);
+        });
     });
 
     describe('error handling', function () {

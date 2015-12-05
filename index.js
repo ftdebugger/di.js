@@ -7,7 +7,6 @@ let {
     functions,
     defaults,
     uniqueId,
-    values,
     clone,
     keys,
     omit,
@@ -18,6 +17,7 @@ let {
 
     forEach,
     filter,
+    find,
     map
     } = lodash;
 
@@ -396,7 +396,7 @@ let normalizeDefinitions = (dependencies) => {
  */
 let extractModule = (Module) => {
     if (Module.__esModule === true) {
-        return values(omit(Module, '__esModule'))[0];
+        return find(Module, value => isFunction(value) || isObject(value));
     }
 
     return Module;
@@ -795,6 +795,8 @@ export {
     parseStringDefinition,
     normalizeDefinitions,
     normalizeDefinition,
+
+    extractModule,
 
     factory
 };
