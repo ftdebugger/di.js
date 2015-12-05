@@ -492,6 +492,36 @@ describe('DI', function () {
                 expect(defs[defs.a.dependencies.b].dependencies.c).to.equal('c');
                 expect(defs[defs.a.dependencies.d].dependencies.c).to.equal('c');
             });
+
+            it('correct cycle parenting', function () {
+                var defs = normalizeDefinitions({
+                    User: 'User.produce',
+                    User1: ['User1.produce', {
+                        user: 'User'
+                    }]
+                });
+
+                expect(defs).to.eql({
+                    User: {
+                        id: 'User',
+                        parentId: 'User',
+                        bundleName: 'User',
+                        factory: 'produce',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    },
+                    User1: {
+                        id: 'User1',
+                        parentId: 'User1',
+                        bundleName: 'User1',
+                        factory: 'produce',
+                        update: 'updateDependencies',
+                        dependencies: {
+                            user: 'User'
+                        }
+                    }
+                });
+            });
         });
     });
 
@@ -1047,7 +1077,7 @@ describe('DI', function () {
     });
 
     describe('error handling', function () {
-        beforeEach(function(){
+        beforeEach(function () {
             di = createContainer({
                 resolvers: [
                     staticResolver({

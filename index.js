@@ -364,11 +364,16 @@ let normalizeDefinitions = (dependencies) => {
                 parentId = definition.bundleName;
             }
 
-            let parent = process(parentId);
+            if (parentId === dependencyId) {
+                definition.parentId = definition.bundleName;
+                definition = normalizeDefinitionWithDefaults(definition);
+            } else {
+                let parent = process(parentId);
 
-            definition = defaults(definition, parent);
-            definition.parentId = parentId;
-            definition.bundleName = parent.bundleName;
+                definition = defaults(definition, parent);
+                definition.parentId = parentId;
+                definition.bundleName = parent.bundleName;
+            }
         } else {
             definition = normalizeDefinitionWithDefaults(definition);
         }
