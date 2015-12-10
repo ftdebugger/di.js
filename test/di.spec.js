@@ -1064,7 +1064,6 @@ describe('DI', function () {
             let clone = di.clone({cloneInstances: true});
             clone.getDefinition('validModule').abc = 2;
 
-
             expect(di.getDefinition('validModule').abc).to.equal(1);
         });
 
@@ -1079,7 +1078,8 @@ describe('DI', function () {
 
     describe('extract module', function () {
         it('extract simple module', function () {
-            var module = () => {};
+            var module = () => {
+            };
             expect(extractModule(module)).to.equal(module);
         });
 
@@ -1089,7 +1089,10 @@ describe('DI', function () {
         });
 
         it('extract es6 module', function () {
-            var module = {__esModule: true, SomeModule: () => {}};
+            var module = {
+                __esModule: true, SomeModule: () => {
+                }
+            };
             expect(extractModule(module)).to.equal(module.SomeModule);
         });
 
@@ -1099,13 +1102,18 @@ describe('DI', function () {
         });
 
         it('extract es6 module with additional not Class exports', function () {
-            var module = {__esModule: true, abc: 12, SomeModule: () => {}};
+            var module = {
+                __esModule: true, abc: 12, SomeModule: () => {
+                }
+            };
             expect(extractModule(module)).to.equal(module.SomeModule);
         });
     });
 
     describe('error handling', function () {
         beforeEach(function () {
+            let count = 0;
+
             di = createContainer({
                 resolvers: [
                     staticResolver({
@@ -1127,6 +1135,13 @@ describe('DI', function () {
                         notValidModule: 12,
                         validModule: function () {
 
+                        },
+                        workOnSecond: () => {
+                            if (!count) {
+                                count++;
+                                throw new Error('Try again');
+                            }
+                            return {};
                         }
                     })
                 ]
@@ -1159,6 +1174,12 @@ describe('DI', function () {
 
         it('can handle error when update not found', function () {
             return expect(di('validModule#update')).to.eventually.be.rejectedWith(Error, 'Error: Module "validModule#update" has no instance method with name "update"');
+        });
+
+        it('allow reconstruct failed instance', function () {
+            return expect(di('workOnSecond')).to.eventually.be.rejectedWith(Error, 'Error: Try again').then(() => {
+                return expect(di('workOnSecond')).to.be.eql({});
+            });
         });
     });
 

@@ -545,6 +545,10 @@ let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve}
             definition._progress = null;
 
             return instance;
+        }, error => {
+            definition._progress = null;
+
+            throw error;
         });
     };
 
