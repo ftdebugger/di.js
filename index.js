@@ -520,7 +520,14 @@ let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve}
 
                     if (isFunction(instance[definition.update])) {
                         if (isNeedUpdate) {
-                            return then(instance[definition.update](dependencies), _ => instance);
+                            // If updateDependencies return instance with same type use it instead of instance
+                            return then(instance[definition.update](dependencies), updateResult => {
+                                if (updateResult && updateResult instanceof instance.constructor) {
+                                    return updateResult;
+                                }
+
+                                return instance;
+                            });
                         }
                     } else if (definition.update && definition.update !== DEFAULT_UPDATE) {
                         throw new Error('Module "' + definition.id + '" has no instance method with name "' + definition.update + '"');

@@ -812,6 +812,70 @@ describe('DI', function () {
             expect(instance.invoke).to.equal(1);
             expect(instance.deps.dep.name).to.equal('dep1');
         });
+
+        it('use instance from #update, when it have the same type', function () {
+            let instance2 = {
+                update: function () {
+                }
+            };
+            let instance1 = {
+                update: function () {
+                    if (this.invoked) {
+                        return instance2;
+                    } else {
+                        this.invoked = true;
+                    }
+                }
+            };
+
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        test: function () {
+                            return instance1
+                        }
+                    })
+                ],
+                dependencies: {
+                    test1: ['test#update']
+                }
+            });
+
+            let session = di.session();
+            expect(session('test1')).to.equal(instance1);
+            expect(session('test1')).to.equal(instance1);
+            session.close();
+
+            let session2 = di.session();
+            expect(session2('test1')).to.equal(instance2);
+            expect(session2('test1')).to.equal(instance2);
+        });
+
+        it('do not use instance from #update, when it have other type', function () {
+            let instance2 = new function () {
+            };
+
+            let instance1 = new function () {
+                this.update = function () {
+                    return instance2;
+                }
+            };
+
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        test: function () {
+                            return instance1
+                        }
+                    })
+                ],
+                dependencies: {
+                    test1: ['test#update']
+                }
+            });
+
+            expect(di('test1')).to.equal(instance1);
+        });
     });
 
     describe('sessions', function () {
