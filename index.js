@@ -403,49 +403,99 @@ let extractModule = (Module) => {
 };
 
 /**
- * @param {{__esModule: boolean}|function} Module
- * @param {string} factory
- * @param {{}} dependencies
- * @param {string} id
- *
- * @returns {Promise<object>|object}
+ * @returns {function}
  */
-let factory = ({Module, factory, id}, dependencies) => {
-    Module = extractModule(Module);
+let createMethodFactory = () => {
+    return ({Module, factory, id}, dependencies) => {
+        if (Module[factory]) {
+            return then(Module[factory](dependencies), (instance) => {
+                if (!instance) {
+                    throw new Error('Factory "' + id + '.' + factory + '" return instance of ' + typeof instance + ' type');
+                }
 
-    if (Module[factory]) {
-        return Module[factory](dependencies);
-    } else {
-        var moduleType = typeof Module;
+                return instance;
+            });
+        }
 
         if (factory && factory !== DEFAULT_FACTORY) {
             throw new Error('Module "' + id + '" has no factory with name "' + factory + '"');
         }
+    };
+};
+
+/**
+ * @returns {function}
+ */
+let createInstanceFactory = () => {
+    return ({Module, id}, dependencies) => {
+        var moduleType = typeof Module;
 
         if (moduleType !== 'function') {
             throw new Error('Module "' + id + '" cannot be constructed, because has ' + moduleType + ' type');
         }
 
         return new Module(dependencies);
-    }
+    };
+};
+
+/**
+ * @param {[]} factories Array of factories
+ * @returns {Function}
+ */
+let createArrayFactory = (factories) => {
+    return (definition, dependencies) => {
+        let factoriesQueue = factories.slice();
+
+        let nextFactory = () => {
+            let factory = factoriesQueue.shift();
+
+            return then(factory(definition, dependencies), instance => {
+                if (instance) {
+                    return instance;
+                } else {
+                    if (factoriesQueue.length) {
+                        return nextFactory();
+                    }
+                }
+            });
+        };
+
+        return then(nextFactory(), instance => {
+            if (!instance) {
+                throw new Error('Cannot create instance of Module "' + definition.id + '"');
+            }
+
+            return instance;
+        });
+    };
 };
 
 /**
  * @param {function[]} resolvers
  * @param {object} dependencies
  *
- * @param {object} [definitions]
+ * @param {function} [factory]
  * @param {function} [resolve]
+ * @param {function[]} [factories]
+ * @param {object} [definitions]
  *
  * @returns {function}
  */
-let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve} = {}) => {
+let createContainer = ({resolvers = [], dependencies = {}, factories, definitions, resolve, factory} = {}) => {
     if (!definitions) {
         definitions = normalizeDefinitions(dependencies);
     }
 
     if (!resolve) {
         resolve = arrayResolver(resolvers);
+    }
+
+    if (!factory) {
+        if (!factories) {
+            factories = [createMethodFactory(), createInstanceFactory()];
+        }
+
+        factory = createArrayFactory(factories);
     }
 
     /**
@@ -463,7 +513,7 @@ let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve}
                 throw new Error('Cannot find bundle with name "' + definition.bundleName + '"');
             }
 
-            definition.Module = Module;
+            definition.Module = extractModule(Module);
 
             return Module;
         });
@@ -784,8 +834,9 @@ let createContainer = ({resolvers = [], dependencies = {}, definitions, resolve}
         });
 
         return createContainer({
-            resolvers: resolvers,
-            definitions: newDefinitions
+            resolve: resolve,
+            definitions: newDefinitions,
+            factory: factory
         })
     };
 
@@ -799,6 +850,10 @@ export {
     staticResolver,
     arrayResolver,
 
+    createMethodFactory,
+    createInstanceFactory,
+    createArrayFactory,
+
     then,
     all,
     qCatch,
@@ -807,7 +862,5 @@ export {
     normalizeDefinitions,
     normalizeDefinition,
 
-    extractModule,
-
-    factory
+    extractModule
 };

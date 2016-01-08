@@ -15,7 +15,10 @@ import {
     staticResolver,
     arrayResolver,
 
-    factory,
+    createInstanceFactory,
+    createMethodFactory,
+    createArrayFactory,
+
     then,
     all
 } from '../index.js';
@@ -527,6 +530,11 @@ describe('DI', function () {
     });
 
     describe('factory', function () {
+        let factory = createArrayFactory([
+            createMethodFactory(),
+            createInstanceFactory()
+        ]);
+
         class Abc {
             constructor(deps) {
                 this.deps = deps;
@@ -545,18 +553,6 @@ describe('DI', function () {
 
         it('can create class with factory', function () {
             var instance = factory({Module: Abc, factory: 'producer'}, {abc: 123});
-            expect(instance).to.be.instanceof(Abc);
-            expect(instance.deps.data.abc).to.equal(123);
-        });
-
-        it('can factory from es6 module', function () {
-            var Module = {Abc: Abc};
-
-            Object.defineProperty(Module, '__esModule', {
-                value: true
-            });
-
-            var instance = factory({Module: Module, factory: 'producer'}, {abc: 123});
             expect(instance).to.be.instanceof(Abc);
             expect(instance.deps.data.abc).to.equal(123);
         });
@@ -1225,7 +1221,7 @@ describe('DI', function () {
         });
 
         it('can handle error when factory return nothing', function () {
-            return expect(di('emptyFactory')).to.eventually.be.rejectedWith(Error, 'Error: Factory of "emptyFactory" return instance of undefined type');
+            return expect(di('emptyFactory')).to.eventually.be.rejectedWith(Error, 'Error: Factory "emptyFactory.factory" return instance of undefined type');
         });
 
         it('can handle error when module is not valid', function () {
