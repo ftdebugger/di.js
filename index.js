@@ -24,6 +24,8 @@ let {
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
 
+const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
+
 /**
  * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
  */
@@ -460,13 +462,7 @@ let createArrayFactory = (factories) => {
             });
         };
 
-        return then(nextFactory(), instance => {
-            if (!instance) {
-                throw new Error('Cannot create instance of Module "' + definition.id + '"');
-            }
-
-            return instance;
-        });
+        return nextFactory();
     };
 };
 
@@ -551,6 +547,8 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             ];
 
             return all(promises, ([dependencies]) => {
+                dependencies.definition = definition;
+
                 let _factory = () => {
                     if (definition.instance) {
                         return definition.instance;
@@ -564,6 +562,8 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
                     if (!instance) {
                         throw new Error('Factory of "' + definition.id + '" return instance of ' + (typeof instance) + ' type');
                     }
+
+                    instance[INSTANCE_ID] = definition.id;
 
                     let isNeedUpdate = !params.diSessionId || definition.diSessionId !== params.diSessionId;
                     definition.diSessionId = params.diSessionId;
@@ -660,6 +660,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
         }
 
         definition.instance = null;
+        delete instance[INSTANCE_ID];
     };
 
     /**
@@ -742,6 +743,9 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
     di.put = (inputDefinition, instance, options) => {
         let definition = normalizeModule(inputDefinition);
         extend(definition, {instance, isPersistent: true}, options);
+
+        instance[INSTANCE_ID] = definition.id;
+
         return this;
     };
 
@@ -805,6 +809,30 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      */
     di.getDefinition = (id) => {
         return normalizeModule(id);
+    };
+
+    /**
+     * @param {object} instance
+     * @returns {DiDefinition}
+     */
+    di.getInstanceDefinition = (instance) => {
+        if (instance) {
+            var instanceId = instance[INSTANCE_ID];
+
+            if (instanceId) {
+                return definitions[instanceId];
+            } else {
+                let defKeys = keys(definitions);
+
+                for (var index = 0; index < defKeys.length; index++) {
+                    var key = defKeys[index];
+
+                    if (definitions[key].instance === instance) {
+                        return definitions[key];
+                    }
+                }
+            }
+        }
     };
 
     /**
