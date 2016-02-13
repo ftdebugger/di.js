@@ -268,8 +268,6 @@ let normalizeDefinitionView = (dependencyId, config) => {
         extend(definition, parseStringDefinition(config));
     } else if (isArray(config)) {
         if (typeof config[0] === 'object') {
-            definition.id = uniqueId('di');
-
             extend(definition, config[0]);
         } else {
             extend(definition, parseStringDefinition(config[0]), {dependencies: config[1]});
@@ -532,6 +530,21 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
     };
 
     /**
+     * @param {DiDefinition} definition
+     * @param {string} diSessionId
+     * @returns {boolean}
+     */
+    let isModuleNeedUpdate = (definition, diSessionId) => {
+        var isNeedUpdate = !diSessionId || definition.diSessionId !== diSessionId;
+
+        if (isNeedUpdate && definition.instance) {
+            return isFunction(definition.instance[definition.update]);
+        }
+
+        return isNeedUpdate;
+    };
+
+    /**
      * @param {string|DiDefinition} moduleName
      * @param {{}} params
      *
@@ -565,7 +578,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
 
                     instance[INSTANCE_ID] = definition.id;
 
-                    let isNeedUpdate = !params.diSessionId || definition.diSessionId !== params.diSessionId;
+                    var isNeedUpdate = isModuleNeedUpdate(definition, params.diSessionId);
                     definition.diSessionId = params.diSessionId;
 
                     if (isFunction(instance[definition.update])) {
@@ -590,6 +603,10 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
 
         if (definition._progress) {
             return definition._progress;
+        }
+
+        if (definition.instance && !isModuleNeedUpdate(definition, params.diSessionId)) {
+            return definition.instance;
         }
 
         definition._progress = then(load(), instance => {
