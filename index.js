@@ -15,16 +15,58 @@ let {
     isObject,
     isFunction,
 
-    forEach,
-    filter,
-    find,
-    map
+    find
     } = lodash;
 
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
 
 const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
+
+/**
+ * Simple version of object map
+ *
+ * @param object
+ * @param callback
+ * @returns {Array}
+ */
+let map = (object, callback) => {
+    return Object.keys(object).map(key => {
+        return callback(object[key], key);
+    });
+};
+
+/**
+ * Simple version of object forEach
+ *
+ * @param object
+ * @param callback
+ * @returns {Array}
+ */
+let forEach = (object, callback) => {
+    Object.keys(object).forEach(key => {
+        callback(object[key], key);
+    });
+};
+
+/**
+ * Simple version of object filter
+ *
+ * @param object
+ * @param callback
+ * @returns {Array}
+ */
+let filter = (object, callback) => {
+    let result = [];
+
+    Object.keys(object).forEach(key => {
+        if (callback(object[key], key)) {
+            result.push(object[key]);
+        }
+    });
+
+    return result;
+};
 
 /**
  * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
@@ -776,7 +818,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             return instance && isFunction(instance.serialize);
         });
 
-        let serializedPromises = map(serializable, ({id, instance}) => {
+        let serializedPromises = serializable.map(({id, instance}) => {
             return then(instance.serialize(...args), json => serialized[id] = json);
         });
 
