@@ -456,7 +456,10 @@ describe('DI', function () {
                         bundleName: 'User',
                         factory: 'overrided',
                         update: 'update',
-                        dependencies: {cde: 'cde'}
+                        dependencies: {
+                            abc: 'abc',
+                            cde: 'cde'
+                        }
                     },
                     abc: {
                         id: 'abc',
@@ -475,6 +478,46 @@ describe('DI', function () {
                         dependencies: {}
                     }
                 });
+            });
+
+            it('nesting parenting with null override', function () {
+                var defs = normalizeDefinitions({
+                    User: {
+                        abc: 'abc'
+                    },
+                    user2: ['User', {
+                        abc: null
+                    }]
+                });
+
+                expect(defs).to.eql({
+                    User: {
+                        id: 'User',
+                        parentId: 'User',
+                        bundleName: 'User',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {
+                            abc: 'abc'
+                        }
+                    },
+                    user2: {
+                        id: 'user2',
+                        parentId: 'User',
+                        bundleName: 'User',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    },
+                    abc: {
+                        id: 'abc',
+                        parentId: 'abc',
+                        bundleName: 'abc',
+                        factory: 'factory',
+                        update: 'updateDependencies',
+                        dependencies: {}
+                    }
+                })
             });
 
             it('normalize dependencies', function () {
@@ -1184,12 +1227,12 @@ describe('DI', function () {
             di.put('inst1', inst1);
         });
 
-        it('return definition by instance', function() {
+        it('return definition by instance', function () {
             expect(di.getInstanceDefinition(inst1).instance).to.equal(inst1);
             expect(di.getInstanceDefinition(inst2)).to.equal(undefined);
         });
 
-        it('destroy links after destroy container', function() {
+        it('destroy links after destroy container', function () {
             di.destroy();
             expect(di.getInstanceDefinition(inst1)).to.equal(undefined);
         });

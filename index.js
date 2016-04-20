@@ -3,6 +3,7 @@ import * as lodash from 'lodash';
 // This ugly construction is compile to smaller sized file
 let {
     extend,
+    omitBy,
 
     functions,
     defaults,
@@ -22,6 +23,11 @@ const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
 
 const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
+
+/**
+ * lodash < 4
+ */
+omitBy = omitBy || omit;
 
 /**
  * Simple version of object map
@@ -415,6 +421,11 @@ let normalizeDefinitions = (dependencies) => {
                 definition = defaults(definition, parent);
                 definition.parentId = parentId;
                 definition.bundleName = parent.bundleName;
+
+                if (definition.dependencies !== parent.dependencies) {
+                    definition.dependencies = extend({}, parent.dependencies, definition.dependencies);
+                    definition.dependencies = omitBy(definition.dependencies, value => value == null);
+                }
             }
         } else {
             definition = normalizeDefinitionWithDefaults(definition);
