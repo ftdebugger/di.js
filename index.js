@@ -260,7 +260,7 @@ let arrayResolver = (resolvers) => {
             return bundleCache[name];
         }
 
-        var nextLoader = () => {
+        let nextLoader = () => {
             if (!queue.length) {
                 return;
             }
@@ -383,7 +383,7 @@ let normalizeDefinitions = (dependencies) => {
             }
 
             if (isArray(dependency)) {
-                var depId = definition.id + '/' + name;
+                let depId = definition.id + '/' + name;
                 dependencies[depId] = dependency;
 
                 let depDefinition = process(depId);
@@ -481,7 +481,7 @@ let createMethodFactory = () => {
  */
 let createInstanceFactory = () => {
     return ({Module, id}, dependencies) => {
-        var moduleType = typeof Module;
+        let moduleType = typeof Module;
 
         if (moduleType !== 'function') {
             throw new Error('Module "' + id + '" cannot be constructed, because has ' + moduleType + ' type');
@@ -588,7 +588,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      * @returns {boolean}
      */
     let isModuleNeedUpdate = (definition, diSessionId) => {
-        var isNeedUpdate = !diSessionId || definition.diSessionId !== diSessionId;
+        let isNeedUpdate = !diSessionId || definition.diSessionId !== diSessionId;
 
         if (isNeedUpdate && definition.instance) {
             return isFunction(definition.instance[definition.update]);
@@ -631,14 +631,15 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
 
                     instance[INSTANCE_ID] = definition.id;
 
-                    var isNeedUpdate = isModuleNeedUpdate(definition, params.diSessionId);
+                    let isNeedUpdate = isModuleNeedUpdate(definition, params.diSessionId);
                     definition.diSessionId = params.diSessionId;
 
                     if (isFunction(instance[definition.update])) {
                         if (isNeedUpdate) {
                             // If updateDependencies return instance with same type use it instead of instance
                             return then(instance[definition.update](dependencies), updateResult => {
-                                if (updateResult && updateResult instanceof instance.constructor) {
+                                if (updateResult && instance !== updateResult && updateResult instanceof instance.constructor) {
+                                    destroyObject(instance);
                                     return updateResult;
                                 }
 
@@ -711,16 +712,27 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
 
     /**
      * @param {DiDefinition} definition
-     * @param {boolean} trigger
-     * @param {boolean} destroy
+     * @param {{trigger: boolean, destroy: boolean}} options
      */
-    let destroyInstance = (definition, {trigger = true, destroy = true} = {}) => {
+    let destroyInstance = (definition, options) => {
         let instance = definition.instance;
 
         if (!instance) {
             return;
         }
 
+        destroyObject(instance, options);
+
+        definition.instance = null;
+        delete instance[INSTANCE_ID];
+    };
+
+    /**
+     * @param {*} instance
+     * @param {boolean} trigger
+     * @param {boolean} destroy
+     */
+    let destroyObject = (instance, {trigger = true, destroy = true} = {}) => {
         if (trigger && isFunction(instance.trigger)) {
             instance.trigger('di:destroy');
         }
@@ -728,9 +740,6 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
         if (destroy && isFunction(instance.destroy)) {
             instance.destroy();
         }
-
-        definition.instance = null;
-        delete instance[INSTANCE_ID];
     };
 
     /**
@@ -887,15 +896,15 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      */
     di.getInstanceDefinition = (instance) => {
         if (instance) {
-            var instanceId = instance[INSTANCE_ID];
+            let instanceId = instance[INSTANCE_ID];
 
             if (instanceId) {
                 return definitions[instanceId];
             } else {
                 let defKeys = keys(definitions);
 
-                for (var index = 0; index < defKeys.length; index++) {
-                    var key = defKeys[index];
+                for (let index = 0; index < defKeys.length; index++) {
+                    let key = defKeys[index];
 
                     if (definitions[key].instance === instance) {
                         return definitions[key];
@@ -925,7 +934,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
         let newDefinitions = {};
 
         forEach(definitions, (definition, id) => {
-            var newDefinition = cloneInstances ? clone(definition) : omit(definition, 'instance');
+            let newDefinition = cloneInstances ? clone(definition) : omit(definition, 'instance');
             newDefinition.dependencies = clone(newDefinition.dependencies);
 
             newDefinitions[id] = newDefinition;

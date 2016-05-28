@@ -915,6 +915,51 @@ describe('DI', function () {
 
             expect(di('test1')).to.equal(instance1);
         });
+
+        it('#update previous instance from should be destroyed', function () {
+            class TestInstance {
+                constructor(id) {
+                    this.id = id;
+                    this.destroyed = false;
+                }
+
+                destroy() {
+                    this.destroyed = true;
+                }
+
+                update() {
+                    if (this.invoked) {
+                        return new TestInstance(this.id + 1);
+                    } else {
+                        this.invoked = true;
+                    }
+                }
+            }
+
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        test: () => new TestInstance(1)
+                    })
+                ],
+                dependencies: {
+                    test: ['test#update']
+                }
+            });
+
+            let session1 = di.session();
+            let testInstance1 = session1('test');
+            expect(testInstance1.id).to.equal(1);
+            session1.close();
+
+            let session2 = di.session();
+            let testInstance2 = session2('test');
+            expect(testInstance2.id).to.equal(2);
+            session2.close();
+
+            expect(testInstance1.destroyed).to.be.true;
+            expect(testInstance2.destroyed).to.be.false;
+        });
     });
 
     describe('sessions', function () {
