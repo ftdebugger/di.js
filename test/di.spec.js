@@ -916,7 +916,7 @@ describe('DI', function () {
             expect(di('test1')).to.equal(instance1);
         });
 
-        it('#update previous instance from should be destroyed', function () {
+        describe('#update previous instance', function () {
             class TestInstance {
                 constructor(id) {
                     this.id = id;
@@ -934,32 +934,77 @@ describe('DI', function () {
                         this.invoked = true;
                     }
                 }
+
+                error() {
+                    throw new Error();
+                }
             }
 
-            let di = createContainer({
-                resolvers: [
-                    staticResolver({
-                        test: () => new TestInstance(1)
-                    })
-                ],
-                dependencies: {
-                    test: ['test#update']
-                }
+            it('should be destroyed', function () {
+                let di = createContainer({
+                    resolvers: [
+                        staticResolver({
+                            test: () => new TestInstance(1)
+                        })
+                    ],
+                    dependencies: {
+                        test: ['test#update']
+                    }
+                });
+
+                let session1 = di.session();
+                let testInstance1 = session1('test');
+                expect(testInstance1.id).to.equal(1);
+                session1.close();
+
+                let session2 = di.session();
+                let testInstance2 = session2('test');
+                expect(testInstance2.id).to.equal(2);
+                session2.close();
+
+                expect(testInstance1.destroyed).to.be.true;
+                expect(testInstance2.destroyed).to.be.false;
             });
 
-            let session1 = di.session();
-            let testInstance1 = session1('test');
-            expect(testInstance1.id).to.equal(1);
-            session1.close();
+            it('#should not be destroyed, when error was in pipe', function () {
+                let di = createContainer({
+                    resolvers: [
+                        staticResolver({
+                            TestInstance: TestInstance
+                        })
+                    ],
+                    dependencies: {
+                        test: 'TestInstance#update',
+                        test2: ['TestInstance#error', {
+                            test: 'test'
+                        }]
+                    }
+                });
 
-            let session2 = di.session();
-            let testInstance2 = session2('test');
-            expect(testInstance2.id).to.equal(2);
-            session2.close();
+                let session1 = di.session();
+                let testInstance1 = di('test');
+                session1.close();
 
-            expect(testInstance1.destroyed).to.be.true;
-            expect(testInstance2.destroyed).to.be.false;
+                let session2 = di.session();
+                let testInstance2 = di('test');
+
+                return di('test2').then(
+                    () => {
+                        throw new Error()
+                    },
+                    () => {
+                        expect(testInstance1).not.to.equal(testInstance2);
+                        expect(testInstance1.destroyed).to.be.false;
+                        expect(testInstance2.destroyed).to.be.false;
+                        session2.close();
+                        expect(testInstance1.destroyed).to.be.true;
+                        expect(testInstance2.destroyed).to.be.false;
+                    }
+                );
+            });
+
         });
+
     });
 
     describe('sessions', function () {
@@ -1357,4 +1402,5 @@ describe('DI', function () {
         });
     });
 
-});
+})
+;
