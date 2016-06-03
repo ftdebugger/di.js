@@ -17,7 +17,7 @@ let {
     isFunction,
 
     find
-    } = lodash;
+} = lodash;
 
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
@@ -529,6 +529,8 @@ let createArrayFactory = (factories) => {
  * @returns {function}
  */
 let createContainer = ({resolvers = [], dependencies = {}, factories, definitions, resolve, factory} = {}) => {
+    let destroyQueue = [];
+
     if (!definitions) {
         definitions = normalizeDefinitions(dependencies);
     }
@@ -639,7 +641,8 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
                             // If updateDependencies return instance with same type use it instead of instance
                             return then(instance[definition.update](dependencies), updateResult => {
                                 if (updateResult && instance !== updateResult && updateResult instanceof instance.constructor) {
-                                    destroyObject(instance);
+                                    destroyQueue.push(instance);
+
                                     return updateResult;
                                 }
 
@@ -724,7 +727,6 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
         destroyObject(instance, options);
 
         definition.instance = null;
-        delete instance[INSTANCE_ID];
     };
 
     /**
@@ -733,12 +735,18 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      * @param {boolean} destroy
      */
     let destroyObject = (instance, {trigger = true, destroy = true} = {}) => {
-        if (trigger && isFunction(instance.trigger)) {
-            instance.trigger('di:destroy');
-        }
+        try {
+            if (trigger && isFunction(instance.trigger)) {
+                instance.trigger('di:destroy');
+            }
 
-        if (destroy && isFunction(instance.destroy)) {
-            instance.destroy();
+            if (destroy && isFunction(instance.destroy)) {
+                instance.destroy();
+            }
+
+            instance[INSTANCE_ID] = undefined;
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -803,6 +811,15 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
                     destroyInstance(definition, options);
                 }
             });
+
+            while (destroyQueue.length) {
+                let instance = destroyQueue.shift(),
+                    definition = di.getInstanceDefinition(instance);
+
+                if (instance !== definition.instance) {
+                    destroyObject(instance, options);
+                }
+            }
         };
 
         functions(di).forEach(function (name) {
