@@ -736,15 +736,17 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      */
     let destroyObject = (instance, {trigger = true, destroy = true} = {}) => {
         try {
-            if (trigger && isFunction(instance.trigger)) {
-                instance.trigger('di:destroy');
-            }
+            if (instance[INSTANCE_ID]) {
+                if (trigger && isFunction(instance.trigger)) {
+                    instance.trigger('di:destroy');
+                }
 
-            if (destroy && isFunction(instance.destroy)) {
-                instance.destroy();
-            }
+                if (destroy && isFunction(instance.destroy)) {
+                    instance.destroy();
+                }
 
-            instance[INSTANCE_ID] = undefined;
+                instance[INSTANCE_ID] = undefined;
+            }
         } catch (err) {
             console.error(err);
         }
@@ -816,7 +818,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
                 let instance = destroyQueue.shift(),
                     definition = di.getInstanceDefinition(instance);
 
-                if (instance !== definition.instance) {
+                if (!definition || instance !== definition.instance) {
                     destroyObject(instance, options);
                 }
             }
