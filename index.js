@@ -590,13 +590,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      * @returns {boolean}
      */
     let isModuleNeedUpdate = (definition, diSessionId) => {
-        let isNeedUpdate = !diSessionId || definition.diSessionId !== diSessionId;
-
-        if (isNeedUpdate && definition.instance) {
-            return isFunction(definition.instance[definition.update]);
-        }
-
-        return isNeedUpdate;
+        return !diSessionId || (definition.diSessionId !== diSessionId);
     };
 
     /**
