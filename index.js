@@ -662,10 +662,6 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             return definition._progress;
         }
 
-        if (definition.instance && !isModuleNeedUpdate(definition, params.diSessionId)) {
-            return definition.instance;
-        }
-
         definition._progress = then(load(), instance => {
             definition.instance = instance;
 

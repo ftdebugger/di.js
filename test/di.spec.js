@@ -966,7 +966,53 @@ describe('DI', function () {
                 expect(testInstance2.destroyed).to.be.false;
             });
 
-            it('#should not be destroyed, when error was in pipe', function () {
+            it('should not be destroy instance after next update when #update method not implemented', function () {
+                let di = createContainer({
+                    resolvers: [
+                        staticResolver({
+                            test: {
+                                factory: function ({dep1}) {
+                                    return [
+                                        {id: 1, source: dep1}
+                                    ];
+                                }
+                            },
+                            dep1: function () {
+                                this.name = 'dep1';
+
+                                this.destroy = function () {
+                                    this.name = null;
+                                }
+                            }
+                        })
+                    ],
+                    dependencies: {
+                        test: ['test', {
+                            dep1: 'dep1',
+                        }]
+                    }
+                });
+
+                let session1 = di.session();
+                let testInstance1 = session1('test');
+                session1.close();
+
+                let session2 = di.session();
+                let testInstance2 = session2('test');
+                session2.close();
+
+                let session3 = di.session();
+                let testInstance3 = session3('test');
+                session3.close();
+
+                expect(testInstance1).to.equal(testInstance2);
+                expect(testInstance2).to.equal(testInstance3);
+
+                expect(testInstance2[0].source).to.equal(testInstance3[0].source);
+                expect(testInstance2[0].source.name).to.equal('dep1');
+            });
+
+            it('should not be destroyed, when error was in pipe', function () {
                 let di = createContainer({
                     resolvers: [
                         staticResolver({
