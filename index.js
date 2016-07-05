@@ -1,23 +1,10 @@
-import * as lodash from 'lodash';
+/**
+ * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
+ */
 
-// This ugly construction is compile to smaller sized file
-let {
-    extend,
-    omitBy,
-
-    functions,
-    defaults,
-    uniqueId,
-    clone,
-    keys,
-    omit,
-
-    isArray,
-    isObject,
-    isFunction,
-
-    find
-} = lodash;
+/**
+ * @typedef {{session: function, put: function}} DiContainer
+ */
 
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
@@ -25,9 +12,9 @@ const DEFAULT_UPDATE = 'updateDependencies';
 const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
 
 /**
- * lodash < 4
+ * Return object keys
  */
-omitBy = omitBy || omit;
+let keys = Object.keys;
 
 /**
  * Simple version of object map
@@ -37,9 +24,14 @@ omitBy = omitBy || omit;
  * @returns {Array}
  */
 let map = (object, callback) => {
-    return Object.keys(object).map(key => {
-        return callback(object[key], key);
-    });
+    let objectKeys = keys(object),
+        arr = new Array(objectKeys.length);
+
+    for (let index = 0; index < objectKeys.length; index++) {
+        arr[index] = callback(object[objectKeys[index]], objectKeys[index]);
+    }
+
+    return arr;
 };
 
 /**
@@ -50,9 +42,11 @@ let map = (object, callback) => {
  * @returns {Array}
  */
 let forEach = (object, callback) => {
-    Object.keys(object).forEach(key => {
-        callback(object[key], key);
-    });
+    let objKeys = keys(object);
+
+    for (let index = 0; index < objKeys.length; index++) {
+        callback(object[objKeys[index]], objKeys[index]);
+    }
 };
 
 /**
@@ -63,11 +57,52 @@ let forEach = (object, callback) => {
  * @returns {Array}
  */
 let filter = (object, callback) => {
-    let result = [];
+    let objKeys = keys(object),
+        result = [];
 
-    Object.keys(object).forEach(key => {
+    for (let index = 0; index < objKeys.length; index++) {
+        let key = objKeys[index];
+
         if (callback(object[key], key)) {
             result.push(object[key]);
+        }
+    }
+
+    return result;
+};
+
+/**
+ * @param {{}} object
+ * @param {function} callback
+ *
+ * @returns {*}
+ */
+let find = (object, callback) => {
+    let objKeys = keys(object);
+
+    for (let index = 0; index < objKeys.length; index++) {
+        let value = object[objKeys[index]];
+
+        if (callback(value)) {
+            return value;
+        }
+    }
+};
+
+/**
+ * Omit values from object by callback
+ *
+ * @param {{}} object
+ * @param {function} callback
+ *
+ * @returns {{}}
+ */
+let omitBy = (object, callback) => {
+    let result = {};
+
+    forEach(object, (value, key) => {
+        if (!callback(value, key)) {
+            result[key] = value;
         }
     });
 
@@ -75,12 +110,122 @@ let filter = (object, callback) => {
 };
 
 /**
- * @typedef {{bundleName: string, factory: string, Module: (function|{factory: function}), instance: object, dependencies: object, update: string}} DiDefinition
+ * Omit values from object by key
+ *
+ * @param {{}} object
+ * @param {string} key
+ *
+ * @returns {{}}
  */
+let omit = (object, key) => {
+    return omitBy(object, (_, _key) => _key === key);
+};
 
 /**
- * @typedef {{session: function, put: function}} DiContainer
+ * @param {{}} object
+ *
+ * @returns {string[]}
  */
+let functions = (object) => {
+    return keys(object).filter(key => isFunction(object[key]));
+};
+
+/**
+ * @param {function} func
+ *
+ * @returns {boolean}
+ */
+let isFunction = (func) => {
+    return isObject(func) && Object.prototype.toString.call(func) === '[object Function]';
+};
+
+/**
+ * Extend variables
+ *
+ * @param {{}} object
+ * @param {{}[]} args
+ *
+ * @returns {{}}
+ */
+let extend = Object.assign ? Object.assign : (object, ...args) => {
+    for (let i = 0; i < args.length; i++) {
+        let obj = args[i];
+
+        if (obj != null) {
+            let objKeys = keys(obj);
+
+            for (var j = 0; j < objKeys.length; j++) {
+                let key = objKeys[j];
+
+                object[key] = obj[key];
+            }
+        }
+    }
+
+    return object;
+};
+
+/**
+ * @param {{}} object
+ * @param {{}[]} args
+ *
+ * @returns {{}}
+ */
+let defaults = (object, ...args) => {
+    for (let i = 0; i < args.length; i++) {
+        let obj = args[i];
+
+        if (obj != null) {
+            let objKeys = keys(obj);
+
+            for (var j = 0; j < objKeys.length; j++) {
+                let key = objKeys[j];
+
+                if (object[key] === undefined) {
+                    object[key] = obj[key];
+                }
+            }
+        }
+    }
+
+    return object;
+};
+
+/**
+ * @type {number}
+ */
+let uniqueIndex = 0;
+
+/**
+ * @returns {string}
+ */
+let uniqueId = () => {
+    return 'di' + uniqueIndex++;
+};
+
+/**
+ * @param {{}} object
+ *
+ * @returns {{}}
+ */
+let clone = (object) => {
+    return extend({}, object);
+};
+
+/**
+ * @type {function(arr: *): boolean}
+ */
+let isArray = Array.isArray ? Array.isArray : arr => arr instanceof Array;
+
+/**
+ * @param {{}} obj
+ *
+ * @returns {boolean}
+ */
+let isObject = obj => {
+    let type = typeof obj;
+    return !!obj && (type == 'object' || type == 'function');
+};
 
 /**
  * @param {Promise|*} promise
@@ -772,7 +917,7 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
      * @returns {{load: Function, close: Function}}
      */
     di.session = (defaults = {}) => {
-        let id = uniqueId('di');
+        let id = uniqueId();
 
         defaults.diSessionId = id;
 

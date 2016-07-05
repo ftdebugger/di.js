@@ -1,3 +1,7 @@
 {
-   "plugins": []
+  "plugins": [],
+  "loose": [
+    "es6.spread",
+    "es6.destructuring"
+  ]
 }
