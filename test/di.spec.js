@@ -119,6 +119,14 @@ describe('DI', function () {
                 expect(def.update).to.be.equal('update');
             });
 
+            it('parse reuse', function () {
+                var def = parseStringDefinition('!User');
+                expect(def.bundleName).to.equal(undefined);
+                expect(def.factory).to.be.equal(undefined);
+                expect(def.update).to.be.equal(undefined);
+                expect(def.reuse).to.be.equal('User');
+            });
+
             it('empty string produce error', function () {
                 expect(_ => parseStringDefinition('')).to.throw(Error);
             });
@@ -233,6 +241,20 @@ describe('DI', function () {
                         abc: 'abc'
                     },
                     update: 'updateDependencies'
+                });
+            });
+
+            it('normalize reuse', function () {
+                let def = normalizeDefinition('test', ['!User', {
+                    test: 'test'
+                }]);
+
+                expect(def).to.eql({
+                    dependencies: {
+                        test: 'test'
+                    },
+                    id: 'test',
+                    reuse: 'User'
                 });
             });
 
@@ -569,6 +591,41 @@ describe('DI', function () {
                     }
                 });
             });
+
+            it('parse instance reuse', function () {
+                var defs = normalizeDefinitions({
+                    User1: ['!User', {
+                        test: 'Test'
+                    }]
+                });
+
+                expect(JSON.parse(JSON.stringify(defs))).to.eql({
+                    "Test": {
+                        "bundleName": "Test",
+                        "dependencies": {},
+                        "factory": "factory",
+                        "id": "Test",
+                        "parentId": "Test",
+                        "update": "updateDependencies"
+                    },
+                    "User": {
+                        "bundleName": "User",
+                        "dependencies": {},
+                        "factory": "factory",
+                        "id": "User",
+                        "parentId": "User",
+                        "update": "updateDependencies"
+                    },
+                    "User1": {
+                        "dependencies": {
+                            "test": "Test"
+                        },
+                        "id": "User1",
+                        "parentId": "User1",
+                        "reuse": "User"
+                    }
+                })
+            });
         });
     });
 
@@ -819,6 +876,49 @@ describe('DI', function () {
                 expect(instance.name).to.equal('a');
                 expect(instance.deps.b.name).to.equal('b');
             });
+        });
+
+        it('can build reuses', function () {
+            let counter = 0;
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: function (deps) {
+                            this.updateDependencies = deps => {
+                                this.deps = deps;
+                            }
+                        },
+                        b: function () {
+                            this.name = 'b';
+                        },
+                        c: function () {
+                            this.name = 'c';
+                        }
+                    })
+                ],
+                dependencies: {
+                    a1: ['!a', {
+                        b: 'b'
+                    }],
+                    a2: ['!a', {
+                        c: 'c'
+                    }]
+                }
+            });
+
+            let a1 = di('a1');
+            expect(a1.deps.b.name).to.equal('b');
+            expect(a1.deps.c).to.equal(undefined);
+            let a2 = di('a2');
+            expect(a1.deps.b).to.equal(undefined);
+            expect(a2.deps.c.name).to.equal('c');
+
+            expect(a1).to.equal(a2);
+
+            let a = di('a');
+
+            expect(a).to.equal(a1);
+            expect(a).to.equal(a2);
         });
 
         it('run update dependencies method on every instance', function () {
@@ -1132,6 +1232,69 @@ describe('DI', function () {
             expect(a.name).to.equal('a');
             expect(a.deps.abc).to.equal(1);
         });
+
+        describe('reuse with sessions', function () {
+            let di, isDestroyed;
+
+            beforeEach(function () {
+                isDestroyed = false;
+                di = createContainer({
+                    resolvers: [
+                        staticResolver({
+                            a: function () {
+                                this.destroy = () => {
+                                    isDestroyed = true;
+                                }
+                            }
+                        })
+                    ],
+                    dependencies: {
+                        a1: ['!a', {}],
+                        a2: ['!a', {}]
+                    }
+                });
+            });
+
+            it('not destroy reuse instance which in use', function () {
+                let session1 = di.session();
+                let a1 = session1('a1');
+                session1.close();
+
+                let session2 = di.session();
+                let a2 = session2('a2');
+                session2.close();
+
+                expect(a1).to.equal(a2);
+                expect(isDestroyed).to.equal(false);
+            });
+
+            it('destroy reuse if not in use', function () {
+                let session1 = di.session();
+                let a1 = session1('a1');
+                session1.close();
+
+                di.session().close();
+
+                expect(isDestroyed).to.equal(true);
+                expect(di.getDefinition('a').instance).to.equal(null);
+                expect(di.getDefinition('a1').instance).to.equal(null);
+            });
+
+            it('can recreate after destroy', function () {
+                let session1 = di.session();
+                let a1 = session1('a1');
+                session1.close();
+
+                di.session().close();
+
+                let session2 = di.session();
+                let a2 = session2('a1');
+                session2.close();
+
+                expect(a1).not.to.equal(a2);
+            });
+        });
+
     });
 
     describe('unnamed dependencies', function () {
@@ -1375,6 +1538,99 @@ describe('DI', function () {
 
     });
 
+    describe('update dependencies', function() {
+        let di;
+
+        class A {
+            updateDependencies(deps) {
+                this.deps = deps;
+            }
+        }
+
+        class B {
+            constructor(deps) {
+                this.deps = deps;
+            }
+
+            updateDependencies(deps) {
+                return new B(deps);
+            }
+        }
+
+        class C {}
+
+        beforeEach(function() {
+            di = createContainer({
+                resolvers: [
+                    staticResolver({A, B, C})
+                ],
+                dependencies: {
+                    reuseA: ['!A', {b: 'B', c: 'C'}],
+                    reuseB1: ['!B', {a: 'A'}],
+                    reuseB2: ['!B', {c: 'C'}]
+                }
+            });
+        });
+
+        it('update reuse without instance recreation', function() {
+            let session1 = di.session();
+            let a1 = session1('reuseA'),
+                b1 = a1.deps.b,
+                c1 = a1.deps.c;
+            session1.close();
+
+            let session2 = di.session();
+            let a2 = session2('reuseA'),
+                b2 = a2.deps.b,
+                c2 = a2.deps.c;
+            session2.close();
+
+            expect(a1).to.equal(a2);
+            expect(b1).not.to.equal(b2);
+            expect(c1).to.equal(c2);
+        });
+
+        it('update reuse with instance recreation', function() {
+            let session1 = di.session();
+            let b1 = session1('reuseB1'),
+                a1 = b1.deps.a,
+                c1 = b1.deps.c;
+            session1.close();
+
+            let session2 = di.session();
+            let b2 = session2('reuseB1'),
+                a2 = b2.deps.a,
+                c2 = b2.deps.c;
+            session2.close();
+
+            let session3 = di.session();
+            let b3 = session3('reuseB2'),
+                a3 = b3.deps.a,
+                c3 = b3.deps.c;
+            session3.close();
+
+            expect(b1).not.to.equal(b2);
+            expect(b1).not.to.equal(b3);
+            expect(b2).not.to.equal(b3);
+
+            expect(a1).not.to.be.undefined;
+            expect(c1).to.be.undefined;
+
+            expect(a2).not.to.be.undefined;
+            expect(c2).to.be.undefined;
+
+            expect(a1).to.equal(a2);
+
+            expect(a3).to.be.undefined;
+            expect(c3).not.to.be.undefined;
+
+            expect(di.getDefinition('B').instance).not.to.equal(b1);
+            expect(di.getDefinition('B').instance).not.to.equal(b2);
+            expect(di.getDefinition('B').instance).to.equal(b3);
+        });
+
+    });
+
     describe('error handling', function () {
         beforeEach(function () {
             let count = 0;
@@ -1448,5 +1704,4 @@ describe('DI', function () {
         });
     });
 
-})
-;
+});

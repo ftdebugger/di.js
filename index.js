@@ -431,19 +431,25 @@ let arrayResolver = (resolvers) => {
  */
 let parseStringDefinition = (definition) => {
     let matches = definition ?
-        definition.match(/^([^.#]+)(\.([^#]+))?(#(.+))?$/) :
+        definition.match(/^!?([^.#]+)(\.([^#]+))?(#(.+))?$/) :
         null;
 
     if (!matches) {
         throw new Error('Unknown module format: ' + JSON.stringify(definition));
     }
 
-    return {
-        parentId: definition,
-        bundleName: matches[1],
-        factory: matches[3],
-        update: matches[5]
-    };
+    if (definition[0] === '!') {
+        return {
+            reuse: definition.slice(1)
+        };
+    } else {
+        return {
+            parentId: definition,
+            bundleName: matches[1],
+            factory: matches[3],
+            update: matches[5]
+        };
+    }
 };
 
 /**
@@ -482,6 +488,10 @@ let normalizeDefinitionView = (dependencyId, config) => {
  * @returns {DiDefinition}
  */
 let normalizeDefinitionWithDefaults = (definition) => {
+    if (definition.reuse) {
+        return defaults(definition, {dependencies: {}})
+    }
+
     return defaults(definition, {
         factory: DEFAULT_FACTORY,
         update: DEFAULT_UPDATE,
@@ -547,6 +557,14 @@ let normalizeDefinitions = (dependencies) => {
         }
 
         let definition = normalizeDefinitionView(dependencyId, dependencies[dependencyId]);
+
+        if (definition.reuse) {
+            let reuse = process(definition.reuse);
+
+            definition = extend(Object.create(reuse), definition);
+            definition.parentId = definition.id;
+            definition.dependencies = extend({}, reuse.dependencies, definition.dependencies);
+        }
 
         if (definition.id !== definition.parentId) {
             let parentId;
@@ -801,12 +819,18 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             return definition._progress;
         }
 
-        if (definition.instance && !isModuleNeedUpdate(definition, params.diSessionId)) {
+        if (definition.hasOwnProperty('instance') && definition.instance && !isModuleNeedUpdate(definition, params.diSessionId)) {
             return definition.instance;
         }
 
         definition._progress = then(load(), instance => {
             definition.instance = instance;
+
+            if (definition.reuse) {
+                let reuse = normalizeModule(definition.reuse);
+                reuse.instance = instance;
+                reuse.diSessionId = params.diSessionId;
+            }
 
             return instance;
         });
@@ -863,9 +887,13 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             return;
         }
 
-        destroyObject(instance, options);
+        if (!definition.reuse) {
+            destroyObject(instance, options);
+            definition.instance = null;
+        } else {
+            delete definition.instance;
+        }
 
-        definition.instance = null;
     };
 
     /**
