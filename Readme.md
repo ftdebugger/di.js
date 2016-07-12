@@ -56,11 +56,6 @@ var di = createContainer({
         // the same class instances with different dependencies
         boiledChicken: 'Chicken.boilFactory',
 
-        // You can specify dependencies for each factory
-        'Chicken.boilFactory': {
-            water: 'Water'
-        },
-
         // Another aliasing. This syntax is to override dependencies. It will create 
         // Eggs instance with water dependency
         boiledEggs: ['Eggs', {
@@ -246,44 +241,131 @@ dependencies: {
 
 ```
 
-### Aliasing
+### Parenting
+
+All dependencies, factories and other properties will be copied from User to currentUser
 
 ```js
 dependencies: {
-    Dep1: "Dep2.produce" // dependencyName => dependencyDefinitionId.factory
+    Dep1: "Dep2" // definitionId => parentDefinitionId
 }
 
 // convert to definition
 
 {
     "id": "Dep1",
-    "bundleName": "Dep2", // <----
-    "factory": "produce", // <----
+    "parentId": "Dep2",
+    "bundleName": "Dep2", // Dep2 is not declared, so we use it as class name
+    "factory": "factory", // Default factory is 'factory'
     "dependencies": {}
 }
 
 ```
 
-### Aliasing with dependency overriding
+### Deep parenting with factory overriding
 
 ```js
 dependencies: {
-    Dep1: ["Dep2.produce", {
-        "a": "Dep3.factory"
+    User: {
+        test: 'test'
+    },
+    currentUser: "User.factoryCurrentUser"
+}
+
+// convert to definition
+
+{
+    User: {
+        "id": "User",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "factory", // Default factory is 'factory'
+        "dependencies": {
+            "test": "test"
+        }
+    },
+    currentUser: {
+        "id": "currentUser",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "factoryCurrentUser", // Factory was overriden
+        "dependencies": {
+            "test": "test"
+        }
+    },
+    //..
+}
+
+```
+
+### Deep parenting with dependency overriding
+
+```js
+dependencies: {
+    User: {
+        test: 'test'
+    },
+    currentUser: ['User.factoryCurrentUser', {
+        test2: 'test2'
     }]
 }
 
 // convert to definition
 
 {
-    "id": "Dep1",
-    "bundleName": "Dep2", // <----
-    "factory": "produce", // <----
-    "dependencies": {
-        "a": "Dep3.factory" // <----
-    }
+    User: {
+        "id": "User",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "factory", // Default factory is 'factory'
+        "dependencies": {
+            "test": "test"
+        }
+    },
+    currentUser: {
+        "id": "currentUser",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "factoryCurrentUser", // Factory was overriden
+        "dependencies": {
+            "test": "test",  // parent dependency
+            "test2": "test2" // new dependency
+        }
+    },
+    //..
+}
+```
+
+### Update function declaration
+
+Update function call during sessions, for more information read sessions section
+
+```js
+{
+    user: 'User.newFactory#newUpdate'
 }
 
+// convert to definition
+
+{
+    User: {
+        "id": "User",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "factory", // Default factory is 'factory'
+        "update": "updateDependencies", // Default update function
+        "dependencies": {}
+    },
+    currentUser: {
+        "id": "currentUser",
+        "parentId": "User",
+        "bundleName": "User",
+        "factory": "newFactory", // Factory was overriden
+        "update": "newUpdate",   // Update function was overriden
+        "dependencies": {}
+    },
+    //..
+}
 ```
 
 ### Complete manual definition
@@ -331,6 +413,58 @@ dependencies: {
         }
     }
 }
+```
+
+### Instance reuse, update only dependencies
+
+It is usefull, when dependencies change, but instance must be the same. For example Layouts can accept different
+views as dependencies, but must be the same to prevent re-render.
+
+```js
+dependencies: {
+    basePage: ['BasePage', {
+        header: 'BaseHeader'
+    }],
+
+    homePage: ['!basePage', {
+        section: 'BaseSection'
+    }],
+
+    profilePage: ['!basePage', {
+        section: 'ProfileSection'
+    }]
+}
+
+// convert to definition
+
+{
+    basePage: {
+        id: 'basePage',
+        bundleName: 'BasePage',
+        dependencies: {
+            header: 'BaseHeader'
+        }
+    },
+
+    homePage: {
+        id: 'homePage',
+        dependencies: {
+            header: 'BaseHeader',
+            section: 'BaseSection'
+        },
+        reuse: 'basePage'
+    },
+
+    profilePage: {
+        id: 'profilePage',
+        dependencies: {
+            header: 'BaseHeader',
+            section: 'ProfileSection'
+        },
+        reuse: 'basePage'
+    }
+}
+
 ```
 
 Dependency lifecycle
@@ -415,6 +549,9 @@ via container.
 let session = di.session({someKey: 'some value'});
 let user = session('User'); // To User factory will be passed {someKey: 'some value'} as dependency
 ```
+
+For instances that live between session will be invoked `updateDependencies` method with updated dependencies of this module.
+It call for each instances once in session.
 
 Serialization
 -------------
