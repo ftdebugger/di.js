@@ -691,24 +691,15 @@ let createArrayFactory = (factories) => {
  *
  * @returns {function}
  */
-let createContainer = ({resolvers = [], dependencies = {}, factories, definitions, resolve, factory} = {}) => {
+let createContainer = ({
+        resolvers = [],
+        dependencies = {},
+        factories = [createMethodFactory(), createInstanceFactory()],
+        definitions = normalizeDefinitions(dependencies),
+        resolve = arrayResolver(resolvers),
+        factory = createArrayFactory(factories)} = {}) => {
+
     let destroyQueue = [];
-
-    if (!definitions) {
-        definitions = normalizeDefinitions(dependencies);
-    }
-
-    if (!resolve) {
-        resolve = arrayResolver(resolvers);
-    }
-
-    if (!factory) {
-        if (!factories) {
-            factories = [createMethodFactory(), createInstanceFactory()];
-        }
-
-        factory = createArrayFactory(factories);
-    }
 
     /**
      * @param {DiDefinition} definition
