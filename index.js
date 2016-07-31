@@ -889,10 +889,8 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
 
         if (!definition.reuse) {
             destroyObject(instance, options);
-            definition.instance = null;
-        } else {
-            delete definition.instance;
         }
+        definition.instance = null;
 
     };
 
