@@ -772,8 +772,6 @@ let createContainer = ({resolvers = [], dependencies = {}, factories, definition
             ];
 
             return all(promises, ([dependencies]) => {
-                dependencies.definition = definition;
-
                 let _factory = () => {
                     if (definition.instance) {
                         return definition.instance;
