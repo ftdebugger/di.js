@@ -612,6 +612,9 @@ let normalizeDefinitions = (dependencies) => {
  */
 let extractModule = (Module) => {
     if (Module.__esModule === true) {
+        if (Module.default) {
+            return Module.default;
+        }
         return find(Module, value => isFunction(value) || isObject(value));
     }
 
