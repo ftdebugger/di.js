@@ -9,7 +9,9 @@ Install
 Usage
 -----
 
-For example we want to cook russian salad. We have all ingredients at `ingredients` directory:
+Lets imagine we want to cook russian salad.
+
+All ingredients are in `ingredients` directory:
 
 ```
 ingredients
@@ -28,19 +30,20 @@ import {createContainer, webpackResolver, then} from 'di.js';
 
 var di = createContainer({
     resolvers: [
-        // Each dependency we will be automatically search via resolvers
-        // You can write you own resolver, it just a function with one argument - name,
-        // which will return module or Promise
-        // In this case, we create resolver from webpack require context. It can load 
-        // all bundled modules
+        // Each dependency is resolved via resolvers.
+        // You can write you own resolver: it just a function which takes one argument - name
+        // and returns module or Promise.<module>.
+        //
+        // Here we are creating resolver from webpack's require.context. 
+        // It will resolve all bundled modules
         webpackResolver([
             require.context('./ingredients', true, /\.js$/)
         ])
     ],
     dependencies: {
-        // This is most simple usage, we define key "Salad" and specify dependencies
-        // When dependencies will be resolved, hash with their instances will be passed 
-        // into Salad constructor
+        // This is the most simple usage: we are defining key `Salad` and specify dependencies.
+        // When all dependencies will be resolved, a map with their instances will be passed 
+        // into `Salad` constructor.
         Salad: {
             pea: 'Pea',
             pickles: 'Pickles',
@@ -50,19 +53,21 @@ var di = createContainer({
             potato: 'boiledPotato'
         },
 
-        // boiledChicken will be created from Chicken module with boilFactory method. 
-        // It must return chicken instance or Promise, that will return instance. 
-        // This is some kind of Aliases. It can be very useful, to produce
-        // the same class instances with different dependencies
+        // `boiledChicken` will be created from the Chicken module by `boilFactory` method. 
+        // This method should return chicken instance or Promise.<instance>. 
+        // This is a sort of Aliases. Aliasing can be very useful for constructing
+        // same class instances with different dependencies.
         boiledChicken: 'Chicken.boilFactory',
 
-        // Another aliasing. This syntax is to override dependencies. It will create 
-        // Eggs instance with water dependency
+        // This is one more way of aliasing. The definition means that `boiledEggs` 
+        // is instance of `Eggs` which depends on all of `Eggs` dependencies as well 
+        // as on `water` dependency.
         boiledEggs: ['Eggs', {
             water: 'Water'
         }],
 
-        // this syntax is to full module definition override. In fact you don't need it
+        // This is a full definition syntax. In fact it is too verbose and you 
+        // unlikely will need it.
         boiledPotato: [{
             bundleName: 'MyFavoritePotato',
             dependencies: {
@@ -72,18 +77,17 @@ var di = createContainer({
     }
 });
 
-// If all dependencies is Sync, we get instance immediately 
+// If all dependencies can be resolved synchronously, then we will 
+// get the instance synchronously too.
 let syncSalad = di('Salad');
 
-// If we have some async dependencies, we get promise instead
+// If there are some asynchronous dependencies, we will get promise instead
 di('Salad').then(asyncSalad => {...});
 
-// If you don't want care about this you can use default way
-
+// If you don't want to care about it, you could use Promise
 Promise.resolve(di('Salad')).then(salad => {...});
 
-// or helper from di.js package
-
+// or `then` helper from di.js package (more effective than Promise)
 then(di('Salad'), salad => {...});
 
 ```
@@ -91,33 +95,33 @@ then(di('Salad'), salad => {...});
 Modules
 -------
 
-Module is CommonJS, AMD or ES6 module. Module themselves is not using as dependencies. Module instances are using.
-When Module is loaded via resolver, we need to create instance. The process looks like step by step algorithm:
+Module stands for a CommonJS, AMD or ES6 module. Modules themselves cannot be used as dependencies, but module's instances can do.
+After Module is resolved via resolver, it should be instantiated. The process looks like step by step algorithm:
 
-1. If module is ES6 (`_esModule` is defined) and class was exported as not default, container will extract first exported class (see examples below)
-2. If module has factory method (`factory` by default), it will be invoked with dependencies as first arguments
-3. If module has no factory method and it is function - invoke with `new` keyword. Create instance in other words.
-4. If result of previous two steps looks like Promise, wait until it will be resolved. You can't use promise as dependency.
-5. When instance is resolved, di try to invoke `updateDependencies` method with dependencies as arguments. If it not exists - ignore.
+1. If module is ES6 (`__esModule` is defined) and there is no `default` object export then container will extract first exported class (see examples below).
+2. If module has factory method (`factory` by default), it will be invoked with dependencies as first argument.
+3. If module is a function and doesn't have factory method it will be invoked with `new` keyword with dependencies as first argument. In other words an instance will be created.
+4. If previous two steps will result into `thenable` (e.g. Promise), it will wait for this Promise to resolve. Notice, that you can't use promise as a dependency.
+5. When instance is being resolved, di tries to invoke update method if it exists(`updateDependencies` by default) with dependencies as first argument.
 
 ```js
 // A.js
 export default class MyClass() {} // good
 
 // B.js
-export class MyClass() {} // good too
+export class MyClass() {} // nice
 
 // C.js
 class A {}
 class B {}
 
-export {A, B}; // Bad! DI will fetch only A class
+export {A, B}; // bad! DI will extract only `class A`
 
 // D.js
 class A {}
 class B {}
 
-export default { // Good!
+export default { // awesome!
     factoryA: deps => new A(deps),
     factoryB: deps => new B(deps),
 };
@@ -127,10 +131,8 @@ export default { // Good!
 Resolvers
 ---------
 
-Resolver return module by it name or null if cannot find it. Resolver can be sync or async. All resolvers
-will be invoked one-by-one. First resolver, which return module will win.
-
-Resolver is just a function with one argument: module name. As result container want to get module or Promise
+Resolver is simply a function, which takes name as its argument and returns Module (or Promise.&lt;Module&gt;) if it can resolve given name, or null (or Promise.&lt;null&gt;) if it doesn't.
+All resolvers which are passed to `di.createContainer` method are invoked consequentially. First resolver which returns Module wins.
 
 ```js
 
@@ -148,11 +150,11 @@ let myFirstAsyncResolver = (name) => {
 
 ```
 
-We can use some resolver from the box
+There are some useful resolvers out of the box.
 
 ### staticResolver
 
-with `staticResolver` you can specify key-value pairs of your modules. 
+`staticResolver` is constructed with `key`-`value` pairs of your Modules and will then resolve Modules by `key`. 
 
 ```js
 import {createContainer, staticResolver} from 'di.js';
@@ -170,9 +172,7 @@ var di = createContainer({
 
 ### webpackResolver
 
-with `webpackResolver` you can resolve webpack context requires. It is very useful, when you lazy enough to specify it manually or 
-want to split you application to bundles.
-
+`webpackResolver` is constructed with webpack's require.context objects and then will resolve all bundled Modules. It is very useful, when you are lazy enough to specify Modules manually or you want to split your application into bundles.
 
 ```js
 import {createContainer, staticResolver} from 'di.js';
@@ -180,10 +180,12 @@ import {createContainer, staticResolver} from 'di.js';
 var di = createContainer({
     resolvers: [
         webpackResolver({
-            // recursive find all files in `states` directory with name matched by regular expression
+            // recursively finds all files in `states` directory with a name 
+            // matched by regular expression
             require.context('./states/', true, /(State).js$/),
             
-            // with bundle-loader you can activate AMD style require, which means auto bundle splitting in webpack
+            // with bundle-loader you can activate AMD require style, which means 
+            // automatic bundle splitting with webpack
             require.context('bundle!./views/', true, /(Layout).js$/),
             
             // same behavior with promise-loader
@@ -194,20 +196,20 @@ var di = createContainer({
 });
 ```
 
-Webpack tell, where modules are placed and resolver create map with name => path. As module name it will be use filename without
-extension. This means, if your file has name `./states/SidebarState.js` you can get it with `di('SidebarState')`. Unique names required!
+Webpack gives us information about where modules are placed and webpackResolver creates map with `name` - `path` pairs. Filename without extension will be used as a Module name. It means that file `./states/SidebarState.js` can be required from di as `di('SidebarState')`. But keep your eyes open: unique names are required!
 
 Dependency definition
 ---------------------
 
-You can specify dependencies in `dependencies` key of `createContainer` configuration. If your module has no dependencies, you don't need to declare it. 
-Every item in `dependencies` key will be convert to `Definition`. It's looks like
+You can specify dependencies in `dependencies` key of the `createContainer` configuration. If your module has no dependencies, there is no need to declare them. 
+Each item in the `dependencies` map will be converted to the `Definition`. It looks like this:
 
 ```js
 {
     "id": "uniqueModuleId",
     "bundleName": "myFavoriteBundle", // this property will be passed to resolvers
-    "factory": "factory", // factory method
+    "factory": "factory", // factory method name
+    "update": "updateDependencies", // update method name
     "dependencies": {
         "dependencyName": "dependencyDefinitionId"
     }
@@ -215,7 +217,7 @@ Every item in `dependencies` key will be convert to `Definition`. It's looks lik
 
 ```
 
-As you can see it is not very simple. So I suggest to use some sugar:
+As you can see it's not so simple and too verbose, but you can use some sugar:
 
 ### Direct dependency declaration
 
@@ -227,7 +229,7 @@ dependencies: {
     }
 }
 
-// convert to definition
+// converts to definition
 
 {
     "id": "Dep1",
@@ -243,14 +245,12 @@ dependencies: {
 
 ### Parenting
 
-All dependencies, factories and other properties will be copied from User to currentUser
-
 ```js
 dependencies: {
     Dep1: "Dep2" // definitionId => parentDefinitionId
 }
 
-// convert to definition
+// converts to definition
 
 {
     "id": "Dep1",
@@ -264,6 +264,8 @@ dependencies: {
 
 ### Deep parenting with factory overriding
 
+All dependencies, factories and other properties will be copied from the User to the currentUser
+
 ```js
 dependencies: {
     User: {
@@ -272,7 +274,7 @@ dependencies: {
     currentUser: "User.factoryCurrentUser"
 }
 
-// convert to definition
+// converts to definition
 
 {
     User: {
@@ -310,7 +312,7 @@ dependencies: {
     }]
 }
 
-// convert to definition
+// converts to definition
 
 {
     User: {
@@ -338,14 +340,14 @@ dependencies: {
 
 ### Update function declaration
 
-Update function call during sessions, for more information read sessions section
+Update function are invoked during sessions. For more information refer to the sessions section
 
 ```js
 {
     user: 'User.newFactory#newUpdate'
 }
 
-// convert to definition
+// converts to definition
 
 {
     User: {
@@ -393,7 +395,7 @@ dependencies: {
     }
 }
 
-// convert to definition
+// converts to definition
 
 {
     Dep1: {
@@ -415,10 +417,10 @@ dependencies: {
 }
 ```
 
-### Instance reuse, update only dependencies
+### Instance reuse
 
-It is usefull, when dependencies change, but instance must be the same. For example Layouts can accept different
-views as dependencies, but must be the same to prevent re-render.
+Instance reusing is useful, when dependencies are changing, but the instance should stay the same. For example Layouts can accept different views as dependencies, but should always stay the same to prevent rerendering.
+With instance reusing di will use created instance of reused Module if it exists and will update only dependencies.
 
 ```js
 dependencies: {
@@ -435,7 +437,7 @@ dependencies: {
     }]
 }
 
-// convert to definition
+// converts to definition
 
 {
     basePage: {
@@ -470,34 +472,33 @@ dependencies: {
 Dependency lifecycle
 --------------------
 
-Every definition will be create once and it instance will be used for all dependencies. It allow to create dependency graph.
-If session mechanism is used, dependency can be destroyed via garbage collector. In this case it will be created when it needed again.
+Every definition is created once and its instance will be used for all dependencies. Definition allows to create dependencies graph.
+If session mechanism is used, dependency can be destroyed via garbage collector. In this case it will be created when it will be needed again.
 
 Sessions
 --------
 
-Session is mechanism to simplify dependency lifecycle. This DI container is designed to cover scenario, when application 
-has only one entry point to dependency loading. It's sounds strange, but if we place this container into router and will fetch 
-root dependency only in this place we can get very light and powerful garbage collection mechanism.
+Session is a mechanism to simplify dependency lifecycle. This DI container is designed to cover scenario, when application 
+has only one entry point for dependency loading. It could soundd strange, but if we place such a DI container into a router and will fetch the root dependency only in this place we can get a very pure and powerful garbage collection mechanism.
  
-First of all API:
+Let's have look at API:
 
 ```js
 import {createContainer} from 'di.js';
 
 let di = createContainer(...);
-let session = di.session(); // create new session
+let session = di.session(); // creates new session
 
-// During Dep1 loading instances from previous loading will be reused
-// load dependency. Same signature as di()
+// During `Dep1` loading instances from previous loading will be reused.
+// Loads `Dep 1`. Same signature as di()
 session.load('Dep1'); 
 
-// All not reused instances will be destroyed
-// close session, run GC. 
+// All not reused instances will be destroyed.
+// Closes session, runs GC. 
 session.close(); 
 ```
 
-Well, some synthetic example of this point:
+Well, some syntactic example of this point:
 
 ```js
 import {createContainer, webpackResolver, then} from 'di.js';
@@ -511,7 +512,7 @@ let di = createContainer({
             content: 'HomeContent'
         }],
 
-        profile: ['BaseLayout', {
+        profile: ['!home', {
             header: 'BaseHeader',
             content: 'ProfileContent'
         }],
@@ -536,27 +537,23 @@ router.on(routeName => {
 });
 ```
 
-When route change: fire event and new session opened. We load all dependencies and reuse existent. When render complete 
-we destroy all instances, which was not used in this session. In this example if first home router was we create in container
-`BaseLayout`, `BaseHeader`, `HomeContent` and `UserAuth`. When router change to 'profile' we additionally create `ProfileContent`
-and pass it to existent `BaseLayout` which was created on previous route. When GC fired it clean `HomeContent`, because nobody
-load it in this session.
+When route changes it fires an event and new session is opened. We load all dependencies and reuse existent. When all dependencies are loaded and layouts are rendered we close the session and thus destroy all instances, which were not used in the new session.
+Take for example there was `home` route initially on the page. It depends on `BaseLayout`, `BaseHeader`, `HomeContent` and `UserAuth`. Once route becomes `profile` route, we load all of its dependencies and by closing session we destroy outdated dependencies. Hereby we load `ProfileContent` Module and pass it to the existing `BaseLayout` Module and also destroy `HomeContent` Module since nobody requires it in the new session. Notice, that `BaseLayout` Module remains the same through sessions since it is reused by `profile` route.
 
-Additionally you can pass `defaults` dependencies to session, which will be passed into every instance, which would be created
-via container.
+Additionally you can pass `default` dependencies to the session, which will be passed into every instance, which would be created or updated via the DI container.
 
 ```
 let session = di.session({someKey: 'some value'});
-let user = session('User'); // To User factory will be passed {someKey: 'some value'} as dependency
+let user = session('User'); // User module will be instantiated with {someKey: 'some value'} as dependencies
 ```
 
-For instances that live between session will be invoked `updateDependencies` method with updated dependencies of this module.
+When instances are created for the first time or they were created in the previous session and someone requires them in the new session then update method will be invoked with new dependencies of the module.
 It call for each instances once in session.
 
 Serialization
 -------------
 
-You could serialize current DI state to restore it in another place. It is no magic here. If you want to use this feature
+You could serialize current DI state to restore it later. There is no magic: if you want to use this feature
 you need to implement `serialize` instance method and `restore` static module method.
 
 ```js
@@ -566,7 +563,7 @@ let newDi = createContainer(...);
 newDi.restore(data);
 ```
 
-Module can be looks like
+Module can look like this:
 
 ```js
 export class User {
