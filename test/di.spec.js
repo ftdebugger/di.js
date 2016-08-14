@@ -1510,6 +1510,14 @@ describe('DI', function () {
             };
             expect(extractModule(module)).to.equal(module.SomeModule);
         });
+
+        it('extracts es6 default module even if it is not the first exported module', function () {
+            var module = {
+                __esModule: true, SomeModule: {}, default: {}
+            };
+            expect(extractModule(module)).to.equal(module.default);
+        });
+
     });
 
     describe('definition by instance', function () {
