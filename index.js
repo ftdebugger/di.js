@@ -883,10 +883,8 @@ let createContainer = ({
 
         if (!definition.reuse) {
             destroyObject(instance, options);
-            definition.instance = null;
-        } else {
-            delete definition.instance;
         }
+        definition.instance = null;
 
     };
 
