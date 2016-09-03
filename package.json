@@ -2,7 +2,7 @@
   "name": "di.js",
   "version": "1.9.1",
   "description": "",
-  "main": "index.js",
+  "main": "build/di.es5.js",
   "scripts": {
     "test": "mocha --compilers js:babel/register",
     "dev": "mocha --compilers js:babel/register -w",
