@@ -921,6 +921,42 @@ describe('DI', function () {
             expect(a).to.equal(a2);
         });
 
+        it('can build reuses with different update functions', function () {
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        a: function () {
+                            this.updateWithAssign = deps => {
+                                this.deps = deps;
+                            }
+                            this.update = () => {};
+                        },
+                        b: function () {
+                            this.name = 'b';
+                        },
+                        c: function () {
+                            this.name = 'c';
+                        }
+                    })
+                ],
+                dependencies: {
+                    a1: ['!a#updateWithAssign', {
+                        b: 'b'
+                    }],
+                    a2: ['!a#update', {
+                        b: 'c'
+                    }]
+                }
+            });
+
+            let a1 = di('a1');
+            expect(a1.deps.b.name).to.equal('b');
+            let a2 = di('a2');
+            expect(a2.deps.b.name).to.equal('b');
+
+            expect(a1).to.equal(a2);
+        });
+
         it('run update dependencies method on every instance', function () {
             let di = createContainer({
                 resolvers: [
