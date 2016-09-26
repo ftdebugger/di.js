@@ -953,8 +953,7 @@ describe('DI', function () {
             let a1 = di('a1');
             expect(a1.deps.b.name).to.equal('b');
             let a2 = di('a2');
-            expect(a2.deps.b.name).to.equal('b');
-
+            expect(a1.deps.b.name).to.equal('b');
             expect(a1).to.equal(a2);
         });
 
@@ -1511,6 +1510,21 @@ describe('DI', function () {
             let clone = di.clone({cloneInstances: true});
 
             expect(clone.getDefinition('validModule').dependencies).not.to.equal(sourceDefinition.dependencies);
+        });
+
+        it('clones reuse', function () {
+            let di = createContainer({
+                dependencies: {
+                    a: 'a',
+                    b: '!a'
+                }
+            });
+            let definitions = di.getDefinitions();
+            let newDefinitions = di.clone().getDefinitions();
+
+            expect(definitions).not.equal(newDefinitions);
+            expect(definitions.b.__proto__).eql(definitions.a);
+            expect(newDefinitions.b.__proto__).eql(newDefinitions.a);
         });
 
     });
