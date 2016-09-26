@@ -629,7 +629,19 @@ let extractModule = (Module) => {
         if (Module.default) {
             return Module.default;
         }
+
         return find(Module, value => isFunction(value) || isObject(value));
+    }
+
+    // Webpack 2 module
+    if (typeof Module === 'object') {
+        let descriptor = Object.getOwnPropertyNames(Module)
+            .map(name => Object.getOwnPropertyDescriptor(Module, name))
+            .find(descriptor => descriptor.get);
+
+        if (descriptor) {
+            return descriptor.get();
+        }
     }
 
     return Module;
