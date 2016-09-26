@@ -929,7 +929,8 @@ describe('DI', function () {
                             this.updateWithAssign = deps => {
                                 this.deps = deps;
                             }
-                            this.update = () => {};
+                            this.update = () => {
+                            };
                         },
                         b: function () {
                             this.name = 'b';
@@ -1509,6 +1510,21 @@ describe('DI', function () {
             let clone = di.clone({cloneInstances: true});
 
             expect(clone.getDefinition('validModule').dependencies).not.to.equal(sourceDefinition.dependencies);
+        });
+
+        it('clones reuse', function () {
+            let di = createContainer({
+                dependencies: {
+                    a: 'a',
+                    b: '!a'
+                }
+            });
+            let definitions = di.getDefinitions();
+            let newDefinitions = di.clone().getDefinitions();
+
+            expect(definitions).not.equal(newDefinitions);
+            expect(definitions.b.__proto__).eql(definitions.a);
+            expect(newDefinitions.b.__proto__).eql(newDefinitions.a);
         });
 
     });

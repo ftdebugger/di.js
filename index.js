@@ -1138,12 +1138,25 @@ let createContainer = ({
      */
     di.clone = ({cloneInstances = false} = {}) => {
         let newDefinitions = {};
+        let reuseDefinitions = [];
+
+        let cloneDefinition = (definition, proto = {}) => {
+            let newDefinition = Object.create(proto);
+            extend(newDefinition, cloneInstances ? definition : omit(definition, 'instance'));
+            newDefinition.dependencies = clone(newDefinition.dependencies);
+            return newDefinition;
+        };
 
         forEach(definitions, (definition, id) => {
-            let newDefinition = cloneInstances ? clone(definition) : omit(definition, 'instance');
-            newDefinition.dependencies = clone(newDefinition.dependencies);
+            if (definition.reuse) {
+                reuseDefinitions.push({definition, id});
+            } else {
+                newDefinitions[id] = cloneDefinition(definition);
+            }
+        });
 
-            newDefinitions[id] = newDefinition;
+        reuseDefinitions.forEach(({definition, id}) => {
+            newDefinitions[id] = cloneDefinition(definition, newDefinitions[definition.reuse]);
         });
 
         return createContainer({
