@@ -953,7 +953,6 @@ describe('DI', function () {
             expect(a1.deps.b.name).to.equal('b');
             let a2 = di('a2');
             expect(a1.deps.b.name).to.equal('b');
-
             expect(a1).to.equal(a2);
         });
 
@@ -1546,6 +1545,30 @@ describe('DI', function () {
             };
             expect(extractModule(module)).to.equal(module.SomeModule);
         });
+
+        it('extracts es6 default module even if it is not the first exported module', function () {
+            var module = {
+                __esModule: true, SomeModule: {}, default: {}
+            };
+            expect(extractModule(module)).to.equal(module.default);
+        });
+
+        it('extracts webpack modules', function () {
+            var module = {};
+
+            var User = function () {
+                this.name = 'User';
+            };
+
+            Object.defineProperty(module, 'User', {
+                get() {
+                    return User
+                }
+            });
+
+            expect(extractModule(module)).to.equal(User);
+        });
+
     });
 
     describe('definition by instance', function () {
@@ -1574,7 +1597,7 @@ describe('DI', function () {
 
     });
 
-    describe('update dependencies', function() {
+    describe('update dependencies', function () {
         let di;
 
         class A {
@@ -1593,9 +1616,10 @@ describe('DI', function () {
             }
         }
 
-        class C {}
+        class C {
+        }
 
-        beforeEach(function() {
+        beforeEach(function () {
             di = createContainer({
                 resolvers: [
                     staticResolver({A, B, C})
@@ -1608,7 +1632,7 @@ describe('DI', function () {
             });
         });
 
-        it('update reuse without instance recreation', function() {
+        it('update reuse without instance recreation', function () {
             let session1 = di.session();
             let a1 = session1('reuseA'),
                 b1 = a1.deps.b,
@@ -1626,7 +1650,7 @@ describe('DI', function () {
             expect(c1).to.equal(c2);
         });
 
-        it('update reuse with instance recreation', function() {
+        it('update reuse with instance recreation', function () {
             let session1 = di.session();
             let b1 = session1('reuseB1'),
                 a1 = b1.deps.a,

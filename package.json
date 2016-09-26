@@ -1,8 +1,8 @@
 {
   "name": "di.js",
-  "version": "1.9.0",
+  "version": "1.11.0",
   "description": "",
-  "main": "index.js",
+  "main": "build/di.es5.js",
   "scripts": {
     "test": "mocha --compilers js:babel/register",
     "dev": "mocha --compilers js:babel/register -w",

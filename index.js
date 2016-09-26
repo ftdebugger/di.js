@@ -427,7 +427,7 @@ let arrayResolver = (resolvers) => {
 
 /**
  * @param {string} definition
- * @returns {{name: string, factory: string|undefined}}
+ * @returns {{}}
  */
 let parseStringDefinition = (definition) => {
     let matches = definition ?
@@ -438,16 +438,30 @@ let parseStringDefinition = (definition) => {
         throw new Error('Unknown module format: ' + JSON.stringify(definition));
     }
 
+    let bundleName = matches[1],
+        factory = matches[3],
+        update = matches[5];
+
     if (definition[0] === '!') {
-        return {
-            reuse: definition.slice(1)
+        let reuseDefinition = {
+            reuse: bundleName
         };
+
+        if (factory) {
+            reuseDefinition.factory = factory;
+        }
+
+        if (update) {
+            reuseDefinition.update = update;
+        }
+
+        return reuseDefinition;
     } else {
         return {
             parentId: definition,
-            bundleName: matches[1],
-            factory: matches[3],
-            update: matches[5]
+            bundleName,
+            factory,
+            update
         };
     }
 };
@@ -612,7 +626,22 @@ let normalizeDefinitions = (dependencies) => {
  */
 let extractModule = (Module) => {
     if (Module.__esModule === true) {
+        if (Module.default) {
+            return Module.default;
+        }
+
         return find(Module, value => isFunction(value) || isObject(value));
+    }
+
+    // Webpack 2 module
+    if (typeof Module === 'object') {
+        let descriptor = Object.getOwnPropertyNames(Module)
+            .map(name => Object.getOwnPropertyDescriptor(Module, name))
+            .find(descriptor => descriptor.get);
+
+        if (descriptor) {
+            return descriptor.get();
+        }
     }
 
     return Module;
