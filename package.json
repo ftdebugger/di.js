@@ -8,7 +8,7 @@
     "dev": "mocha --compilers js:babel/register -w",
     "es5": "mkdir -p build && babel index.js -s inline -m umd --module-id di -o build/di.es5.js",
     "build": "npm run es5 && uglifyjs build/di.es5.js -o build/di.es5.min.js --mangle --screw-ie8 -c join_vars,unsafe,pure_getters",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build && npm test"
   },
   "author": "",
   "license": "ISC",
