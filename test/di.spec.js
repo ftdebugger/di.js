@@ -921,6 +921,29 @@ describe('DI', function () {
             expect(a).to.equal(a2);
         });
 
+        it('can build aliased reuses', function () {
+            let di = createContainer({
+                resolvers: [
+                    staticResolver({
+                        Document: function () {
+                            this.name = 'doc';
+                        }
+                    })
+                ],
+                dependencies: {
+                    document: '!Document',
+                    pageA: ['document'],
+                    pageB: ['document']
+                }
+            });
+
+            let pageA = di('pageA');
+            expect(pageA.name).to.equal('doc');
+            let pageB = di('pageB');
+
+            expect(pageA).to.equal(pageB);
+        });
+
         it('can build reuses with different update functions', function () {
             let di = createContainer({
                 resolvers: [
