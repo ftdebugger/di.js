@@ -595,6 +595,11 @@ let normalizeDefinitions = (dependencies) => {
             } else {
                 let parent = process(parentId);
 
+                if (parent.reuse) {
+                    let reuse = process(parent.reuse);
+                    definition = extend(Object.create(reuse), definition);
+                }
+
                 definition = defaults(definition, parent);
                 definition.parentId = parentId;
                 definition.bundleName = parent.bundleName;
