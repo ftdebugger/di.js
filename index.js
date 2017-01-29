@@ -855,6 +855,7 @@ let createContainer = ({
                 let reuse = normalizeModule(definition.reuse);
                 reuse.instance = instance;
                 reuse.diSessionId = params.diSessionId;
+                reuse.reusedBy = definition;
             }
 
             return instance;
@@ -916,6 +917,12 @@ let createContainer = ({
             destroyObject(instance, options);
             definition.instance = null;
         } else {
+            let reuse = normalizeModule(definition.reuse);
+
+            if (reuse.reusedBy === definition) {
+                reuse.reusedBy = null;
+            }
+
             delete definition.instance;
         }
 
@@ -1045,8 +1052,12 @@ let createContainer = ({
     di.serialize = (...args) => {
         let serialized = {};
 
-        let serializable = filter(definitions, ({instance}) => {
-            return instance && isFunction(instance.serialize);
+        let serializable = filter(definitions, (definition) => {
+            if (definition.hasOwnProperty('instance')) {
+                let {instance} = definition;
+
+                return instance && isFunction(instance.serialize);
+            }
         });
 
         let serializedPromises = serializable.map(({id, instance}) => {
