@@ -855,7 +855,6 @@ let createContainer = ({
                 let reuse = normalizeModule(definition.reuse);
                 reuse.instance = instance;
                 reuse.diSessionId = params.diSessionId;
-                reuse.reusedBy = definition;
             }
 
             return instance;
@@ -917,15 +916,8 @@ let createContainer = ({
             destroyObject(instance, options);
             definition.instance = null;
         } else {
-            let reuse = normalizeModule(definition.reuse);
-
-            if (reuse.reusedBy === definition) {
-                reuse.reusedBy = null;
-            }
-
             delete definition.instance;
         }
-
     };
 
     /**
