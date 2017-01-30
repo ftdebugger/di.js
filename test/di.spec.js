@@ -1447,7 +1447,9 @@ describe('DI', function () {
                         }
                     })
                 ],
-                dependencies: {}
+                dependencies: {
+                    b: '!a'
+                }
             });
         });
 
@@ -1455,6 +1457,12 @@ describe('DI', function () {
             di('a');
 
             expect(di.serialize()).to.eql({a: {test: 123}});
+        });
+
+        it('must serialize to object used reuse', function () {
+            di('b');
+
+            expect(di.serialize()).to.eql({a: {test: 123}, b: {test: 123}});
         });
 
         it('must restore from object', function () {

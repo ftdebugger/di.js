@@ -918,7 +918,6 @@ let createContainer = ({
         } else {
             delete definition.instance;
         }
-
     };
 
     /**
@@ -1045,8 +1044,12 @@ let createContainer = ({
     di.serialize = (...args) => {
         let serialized = {};
 
-        let serializable = filter(definitions, ({instance}) => {
-            return instance && isFunction(instance.serialize);
+        let serializable = filter(definitions, (definition) => {
+            if (definition.hasOwnProperty('instance')) {
+                let {instance} = definition;
+
+                return instance && isFunction(instance.serialize);
+            }
         });
 
         let serializedPromises = serializable.map(({id, instance}) => {
