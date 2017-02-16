@@ -8,6 +8,7 @@
 
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
+const STATIC_FIELD = 'static';
 
 const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
 
@@ -493,6 +494,13 @@ let normalizeDefinitionView = (dependencyId, config) => {
         throw new Error('Unknown type of dependency definition');
     }
 
+    let dependencies = definition.dependencies;
+
+    if (dependencies && dependencies[STATIC_FIELD]) {
+        definition.static = dependencies[STATIC_FIELD];
+        delete dependencies[STATIC_FIELD];
+    }
+
     return definition;
 };
 
@@ -607,6 +615,10 @@ let normalizeDefinitions = (dependencies) => {
                 if (definition.dependencies !== parent.dependencies) {
                     definition.dependencies = extend({}, parent.dependencies, definition.dependencies);
                     definition.dependencies = omitBy(definition.dependencies, value => value == null);
+                }
+
+                if (parent.static) {
+                    definition.static = extend({}, parent.static, definition.static);
                 }
             }
         } else {
@@ -898,7 +910,13 @@ let createContainer = ({
      * @returns {Promise<object>|object}
      */
     let loadModuleDependencies = (definition, params) => {
-        return loadModules(definition.dependencies, params);
+        return then(loadModules(definition.dependencies, params), dependencies => {
+            if (definition.static) {
+                return extend(dependencies, definition.static);
+            }
+
+            return dependencies;
+        });
     };
 
     /**

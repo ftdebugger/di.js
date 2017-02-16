@@ -343,6 +343,32 @@ describe('container', function () {
         expect(di('test1')).to.equal(instance1);
     });
 
+    it('should mix static into dependencies', function () {
+        let di = createContainer({
+            resolvers: [
+                staticResolver({
+                    Test: function (deps) {
+                        this.deps = deps;
+                    }
+                })
+            ],
+            dependencies: {
+                test: ['Test', {
+                    test: 'Test',
+                    static: {
+                        abc: 1
+                    }
+                }]
+            }
+        });
+
+        let instance = di('test', {param: 2});
+
+        expect(instance.deps.param).to.equal(2);
+        expect(instance.deps.abc).to.equal(1);
+        expect(instance.deps.test.deps.abc).to.equal(undefined);
+    });
+
     describe('#update previous instance', function () {
         class TestInstance {
             constructor(id) {
@@ -475,7 +501,6 @@ describe('container', function () {
                 }
             );
         });
-
     });
 
 });
