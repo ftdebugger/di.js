@@ -64,4 +64,37 @@ describe('clone', function () {
         expect(newDefinitions.b.__proto__).eql(newDefinitions.a);
     });
 
+    it('clone static dependencies', function () {
+        let di = createContainer({
+            dependencies: {
+                User: {
+                    static: {
+                        abc: 1
+                    }
+                }
+            }
+        });
+
+        let clone = di.clone();
+        expect(clone.getDefinition('User').static).to.eql({abc: 1});
+    });
+
+    it('clone static dependencies with same config', function () {
+        let config = {
+            dependencies: {
+                User: {
+                    static: {
+                        abc: 1
+                    }
+                }
+            }
+        };
+
+        let di = createContainer(config);
+        let diClone = createContainer(config);
+
+        expect(di.getDefinition('User').static).to.eql({abc: 1});
+        expect(diClone.getDefinition('User').static).to.eql({abc: 1});
+    });
+
 });

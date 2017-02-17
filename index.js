@@ -498,7 +498,7 @@ let normalizeDefinitionView = (dependencyId, config) => {
 
     if (dependencies && dependencies[STATIC_FIELD]) {
         definition.static = dependencies[STATIC_FIELD];
-        delete dependencies[STATIC_FIELD];
+        definition.dependencies = omit(dependencies, STATIC_FIELD);
     }
 
     return definition;
