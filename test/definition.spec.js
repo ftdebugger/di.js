@@ -516,31 +516,96 @@ describe('definition', function () {
             });
 
             expect(JSON.parse(JSON.stringify(defs))).to.eql({
-                "Test": {
-                    "bundleName": "Test",
-                    "dependencies": {},
-                    "factory": "factory",
-                    "id": "Test",
-                    "parentId": "Test",
-                    "update": "updateDependencies"
+                Test: {
+                    bundleName: 'Test',
+                    dependencies: {},
+                    factory: 'factory',
+                    id: 'Test',
+                    parentId: 'Test',
+                    update: 'updateDependencies'
                 },
-                "User": {
-                    "bundleName": "User",
-                    "dependencies": {},
-                    "factory": "factory",
-                    "id": "User",
-                    "parentId": "User",
-                    "update": "updateDependencies"
+                User: {
+                    bundleName: 'User',
+                    dependencies: {},
+                    factory: 'factory',
+                    id: 'User',
+                    parentId: 'User',
+                    update: 'updateDependencies'
                 },
-                "User1": {
-                    "dependencies": {
-                        "test": "Test"
+                User1: {
+                    dependencies: {
+                        test: 'Test'
                     },
-                    "id": "User1",
-                    "parentId": "User1",
-                    "reuse": "User"
+                    id: 'User1',
+                    parentId: 'User1',
+                    reuse: 'User'
                 }
             })
+        });
+
+        it('parse static dependencies', function () {
+            let defs = normalizeDefinitions({
+                User: {
+                    static: {
+                        abc: 1
+                    }
+                }
+            });
+
+            expect(defs).to.eql({
+                User: {
+                    bundleName: 'User',
+                    dependencies: {},
+                    factory: 'factory',
+                    id: 'User',
+                    parentId: 'User',
+                    update: 'updateDependencies',
+                    static: {
+                        abc: 1
+                    }
+                }
+            });
+        });
+
+        it('parse static dependencies with parenting', function () {
+            let defs = normalizeDefinitions({
+                User: {
+                    static: {
+                        abc: 1
+                    }
+                },
+                User1: ['User', {
+                    static: {
+                        cde: 2
+                    }
+                }]
+            });
+
+            expect(defs).to.eql({
+                User: {
+                    id: 'User',
+                    bundleName: 'User',
+                    dependencies: {},
+                    factory: 'factory',
+                    parentId: 'User',
+                    update: 'updateDependencies',
+                    static: {
+                        abc: 1
+                    }
+                },
+                User1: {
+                    id: 'User1',
+                    bundleName: 'User',
+                    dependencies: {},
+                    factory: 'factory',
+                    parentId: 'User',
+                    update: 'updateDependencies',
+                    static: {
+                        abc: 1,
+                        cde: 2
+                    }
+                }
+            });
         });
     });
 });
