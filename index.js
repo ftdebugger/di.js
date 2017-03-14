@@ -8,6 +8,7 @@
 
 const DEFAULT_FACTORY = 'factory';
 const DEFAULT_UPDATE = 'updateDependencies';
+const DEFAULT_VALIDATE = 'isInstanceValid';
 const STATIC_FIELD = 'static';
 
 const INSTANCE_ID = typeof Symbol === 'function' ? Symbol('DI.js instance id') : '___di.js';
@@ -794,6 +795,21 @@ let createContainer = ({
     };
 
     /**
+     * @param {DiDefinition} definition
+     * @param {{}} params
+     * @returns {boolean}
+     */
+    let isModuleInstanceValid = (definition, params) => {
+        let instance = definition.instance;
+
+        if (instance && instance[DEFAULT_VALIDATE]) {
+            return instance[DEFAULT_VALIDATE](params);
+        }
+
+        return Boolean(instance);
+    };
+
+    /**
      * @param {string|DiDefinition} moduleName
      * @param {{}} params
      *
@@ -801,6 +817,8 @@ let createContainer = ({
      */
     let loadModule = (moduleName, params) => {
         let definition = normalizeModule(moduleName);
+        let isInstanceValid = isModuleInstanceValid(definition, params);
+        let isNeedUpdate = isModuleNeedUpdate(definition, params.diSessionId) || !isInstanceValid;
 
         let load = () => {
             let promises = [
@@ -812,7 +830,7 @@ let createContainer = ({
                 dependencies.definition = definition;
 
                 let _factory = () => {
-                    if (definition.instance) {
+                    if (definition.instance && isInstanceValid) {
                         return definition.instance;
                     } else {
                         return factory(definition, dependencies);
@@ -827,7 +845,6 @@ let createContainer = ({
 
                     instance[INSTANCE_ID] = definition.id;
 
-                    let isNeedUpdate = isModuleNeedUpdate(definition, params.diSessionId);
                     definition.diSessionId = params.diSessionId;
 
                     if (isFunction(instance[definition.update])) {
@@ -856,7 +873,7 @@ let createContainer = ({
             return definition._progress;
         }
 
-        if (definition.hasOwnProperty('instance') && definition.instance && !isModuleNeedUpdate(definition, params.diSessionId)) {
+        if (definition.hasOwnProperty('instance') && definition.instance && !isNeedUpdate) {
             return definition.instance;
         }
 
