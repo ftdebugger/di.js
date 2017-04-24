@@ -554,7 +554,7 @@ let normalizeDefinitions = (dependencies) => {
                 // If we use bundleName as dependency, and bundle is not defined in global definitions, we need to create it
                 // elsewhere create dynamic definition
                 if (stringDefinition.bundleName === dependency) {
-                    dependencies[dependency] = process(dependency).id;
+                    dependencies[dependency] = processDependency(dependency).id;
                 } else {
                     dependency = [dependency, {}];
                 }
@@ -564,7 +564,7 @@ let normalizeDefinitions = (dependencies) => {
                 let depId = definition.id + '/' + name;
                 dependencies[depId] = dependency;
 
-                let depDefinition = process(depId);
+                let depDefinition = processDependency(depId);
 
                 definitions[depDefinition.id] = depDefinition;
                 definition.dependencies[name] = depDefinition.id;
@@ -574,7 +574,7 @@ let normalizeDefinitions = (dependencies) => {
         });
     };
 
-    let process = (dependencyId) => {
+    let processDependency = (dependencyId) => {
         if (definitions[dependencyId]) {
             return definitions[dependencyId];
         }
@@ -582,7 +582,7 @@ let normalizeDefinitions = (dependencies) => {
         let definition = normalizeDefinitionView(dependencyId, dependencies[dependencyId]);
 
         if (definition.reuse) {
-            let reuse = process(definition.reuse);
+            let reuse = processDependency(definition.reuse);
 
             definition = extend(Object.create(reuse), definition);
             definition.parentId = definition.id;
@@ -602,10 +602,10 @@ let normalizeDefinitions = (dependencies) => {
                 definition.parentId = definition.bundleName;
                 definition = normalizeDefinitionWithDefaults(definition);
             } else {
-                let parent = process(parentId);
+                let parent = processDependency(parentId);
 
                 if (parent.reuse) {
-                    let reuse = process(parent.reuse);
+                    let reuse = processDependency(parent.reuse);
                     definition = extend(Object.create(reuse), definition);
                 }
 
@@ -631,7 +631,7 @@ let normalizeDefinitions = (dependencies) => {
         return definitions[dependencyId] = definition;
     };
 
-    keys(dependencies).forEach(process);
+    keys(dependencies).forEach(processDependency);
 
     return definitions;
 };
