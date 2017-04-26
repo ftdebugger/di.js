@@ -827,8 +827,6 @@ let createContainer = ({
             ];
 
             return all(promises, ([dependencies]) => {
-                dependencies.definition = definition;
-
                 let _factory = () => {
                     if (definition.instance && isInstanceValid) {
                         return definition.instance;
